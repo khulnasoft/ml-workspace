@@ -361,18 +361,18 @@ The GPU flavor also comes with a few additional configuration options, as explai
 
 ### Multi-user setup
 
-The workspace is designed as a single-user development environment. For a multi-user setup, we recommend deploying [🧰 ML Hub](https://github.com/khulnasoft/ml-recipes). ML Hub is based on JupyterHub with the task to spawn, manage, and proxy workspace instances for multiple users.
+The workspace is designed as a single-user development environment. For a multi-user setup, we recommend deploying [🧰 ML Recipes](https://github.com/khulnasoft/ml-recipes). ML Recipes is based on JupyterHub with the task to spawn, manage, and proxy workspace instances for multiple users.
 
 <details>
 <summary>Deployment (click to expand...)</summary>
 
-ML Hub makes it easy to set up a multi-user environment on a single server (via Docker) or a cluster (via Kubernetes) and supports a variety of usage scenarios & authentication providers. You can try out ML Hub via:
+ML Recipes makes it easy to set up a multi-user environment on a single server (via Docker) or a cluster (via Kubernetes) and supports a variety of usage scenarios & authentication providers. You can try out ML Recipes via:
 
 ```bash
 docker run -p 8080:8080 -v /var/run/docker.sock:/var/run/docker.sock khulnasoft/ml-recipes:latest
 ```
 
-For more information and documentation about ML Hub, please take a look at the [Github Site](https://github.com/khulnasoft/ml-recipes).
+For more information and documentation about ML Recipes, please take a look at the [Github Site](https://github.com/khulnasoft/ml-recipes).
 
 </details>
 
