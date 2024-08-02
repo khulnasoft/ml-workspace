@@ -317,13 +317,14 @@ ENV LD_LIBRARY_PATH=$CONDA_ROOT/lib
 # Install pyenv to allow dynamic creation of python versions
 RUN git clone https://github.com/pyenv/pyenv.git $RESOURCES_PATH/.pyenv && \
     # Install pyenv plugins based on pyenv installer
-    git clone https://github.com/pyenv/pyenv-virtualenv.git $RESOURCES_PATH/.pyenv/plugins/pyenv-virtualenv  && \
-    git clone git://github.com/pyenv/pyenv-doctor.git $RESOURCES_PATH/.pyenv/plugins/pyenv-doctor && \
+    git clone https://github.com/pyenv/pyenv-virtualenv.git $RESOURCES_PATH/.pyenv/plugins/pyenv-virtualenv && \
+    git clone https://github.com/pyenv/pyenv-doctor.git $RESOURCES_PATH/.pyenv/plugins/pyenv-doctor && \
     git clone https://github.com/pyenv/pyenv-update.git $RESOURCES_PATH/.pyenv/plugins/pyenv-update && \
     git clone https://github.com/pyenv/pyenv-which-ext.git $RESOURCES_PATH/.pyenv/plugins/pyenv-which-ext && \
     apt-get update && \
     # TODO: lib might contain high vulnerability
     # Required by pyenv
+    apt-get update && \
     apt-get install -y --no-install-recommends libffi-dev && \
     clean-layer.sh
 
@@ -342,33 +343,22 @@ ENV PATH=$HOME/.local/bin:$PATH
 # Install node.js
 RUN \
     apt-get update && \
-    # https://nodejs.org/en/about/releases/ use even numbered releases, i.e. LTS versions
-    curl -sL https://deb.nodesource.com/setup_14.x | sudo -E bash - && \
+    curl -sL https://deb.nodesource.com/setup_16.x | bash - && \
     apt-get install -y nodejs && \
-    # As conda is first in path, the commands 'node' and 'npm' reference to the version of conda.
-    # Replace those versions with the newly installed versions of node
     rm -f /opt/conda/bin/node && ln -s /usr/bin/node /opt/conda/bin/node && \
     rm -f /opt/conda/bin/npm && ln -s /usr/bin/npm /opt/conda/bin/npm && \
-    # Fix permissions
     chmod a+rwx /usr/bin/node && \
     chmod a+rwx /usr/bin/npm && \
-    # Fix node versions - put into own dir and before conda:
     mkdir -p /opt/node/bin && \
     ln -s /usr/bin/node /opt/node/bin/node && \
     ln -s /usr/bin/npm /opt/node/bin/npm && \
-    # Update npm
-    /usr/bin/npm install -g npm && \
-    # Install Yarn
     /usr/bin/npm install -g yarn && \
-    # Install typescript
     /usr/bin/npm install -g typescript && \
-    # Install webpack - 32 MB
     /usr/bin/npm install -g webpack && \
-    # Install node-gyp
     /usr/bin/npm install -g node-gyp && \
-    # Update all packages to latest version
     /usr/bin/npm update -g && \
-    # Cleanup
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* && \
     clean-layer.sh
 
 ENV PATH=/opt/node/bin:$PATH
@@ -486,7 +476,10 @@ RUN \
 # Install Web Tools - Offered via Jupyter Tooling Plugin
 
 ## VS Code Server: https://github.com/codercom/code-server
+# Install VS Code Server
+# Downgrade to Node.js 16
 COPY resources/tools/vs-code-server.sh $RESOURCES_PATH/tools/vs-code-server.sh
+
 RUN \
     /bin/bash $RESOURCES_PATH/tools/vs-code-server.sh --install && \
     # Cleanup
@@ -551,6 +544,13 @@ RUN \
 COPY resources/libraries ${RESOURCES_PATH}/libraries
 
 ### Install main data science libs
+
+# Install build essentials
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    python3-dev \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
 RUN \
     # Link Conda - All python are linke to the conda instances
     # Linking python 3 crashes conda -> cannot install anyting - remove instead
@@ -561,26 +561,23 @@ RUN \
     ln -s -f $CONDA_ROOT/bin/python /usr/bin/python && \
     apt-get update && \
     # upgrade pip
-    pip install --upgrade pip && \
+    pip install --upgrade pip setuptools wheel && \
     # If minimal flavor - install
     if [ "$WORKSPACE_FLAVOR" = "minimal" ]; then \
         # Install nomkl - mkl needs lots of space
-        conda install -y --update-all 'python='$PYTHON_VERSION nomkl ; \
+        conda install -y --update-all 'python=3.8.10' nomkl ; \
     else \
         # Install mkl for faster computations
-        conda install -y --update-all 'python='$PYTHON_VERSION mkl-service mkl ; \
+        conda install -y --update-all 'python=3.8.10' mkl-service mkl ; \
     fi && \
     # Install some basics - required to run container
     conda install -y --update-all \
-            'python='$PYTHON_VERSION \
+            'python=3.8.10' \
             'ipython=7.24.*' \
             'notebook=6.4.*' \
             'jupyterlab=3.0.*' \
-            # TODO: nbconvert 6.x makes problems with template_path
             'nbconvert=5.6.*' \
-            # TODO: temp fix: yarl version 1.5 is required for lots of libraries.
-            'yarl==1.5.*' \
-            # TODO install scipy, numpy, sklearn, and numexpr via conda for mkl optimizaed versions: https://docs.anaconda.com/mkl-optimizations/
+            'yarl>=1.5.0' \
             'scipy==1.7.*' \
             'numpy==1.19.*' \
             scikit-learn \
@@ -589,68 +586,6 @@ RUN \
             # installed via apt-get: zlib  && \
     # Switch of channel priority, makes some trouble
     conda config --system --set channel_priority false && \
-    # Install minimal pip requirements
-    pip install --no-cache-dir --upgrade --upgrade-strategy only-if-needed -r ${RESOURCES_PATH}/libraries/requirements-minimal.txt && \
-    # If minimal flavor - exit here
-    if [ "$WORKSPACE_FLAVOR" = "minimal" ]; then \
-        # Remove pandoc - package for markdown conversion - not needed
-        # TODO: conda remove -y --force pandoc && \
-        # Fix permissions
-        fix-permissions.sh $CONDA_ROOT && \
-        # Cleanup
-        clean-layer.sh && \
-        exit 0 ; \
-    fi && \
-    # OpenMPI support
-    apt-get install -y --no-install-recommends libopenmpi-dev openmpi-bin && \
-    conda install -y --freeze-installed  \
-        'python='$PYTHON_VERSION \
-        boost \
-        mkl-include && \
-    # Install mkldnn
-    conda install -y --freeze-installed -c mingfeima mkldnn && \
-    # Install pytorch - cpu only
-    conda install -y -c pytorch "pytorch==1.9.*" cpuonly && \
-    # Install light pip requirements
-    pip install --no-cache-dir --upgrade --upgrade-strategy only-if-needed -r ${RESOURCES_PATH}/libraries/requirements-light.txt && \
-    # If light light flavor - exit here
-    if [ "$WORKSPACE_FLAVOR" = "light" ]; then \
-        # Fix permissions
-        fix-permissions.sh $CONDA_ROOT && \
-        # Cleanup
-        clean-layer.sh && \
-        exit 0 ; \
-    fi && \
-    # libartals == 40MB liblapack-dev == 20 MB
-    apt-get install -y --no-install-recommends liblapack-dev libatlas-base-dev libeigen3-dev libblas-dev && \
-    # pandoc -> installs libluajit -> problem for openresty
-    # HDF5 (19MB)
-    apt-get install -y --no-install-recommends libhdf5-dev && \
-    # TBB threading optimization
-    apt-get install -y --no-install-recommends libtbb-dev && \
-    # required for tesseract: 11MB - tesseract-ocr-dev?
-    apt-get install -y --no-install-recommends libtesseract-dev && \
-    pip install --no-cache-dir tesserocr && \
-    # TODO: installs tenserflow 2.4 - Required for tensorflow graphics (9MB)
-    apt-get install -y --no-install-recommends libopenexr-dev && \
-    #pip install --no-cache-dir tensorflow-graphics==2020.5.20 && \
-    # GCC OpenMP (GOMP) support library
-    apt-get install -y --no-install-recommends libgomp1 && \
-    # Install Intel(R) Compiler Runtime - numba optimization
-    # TODO: don't install, results in memory error: conda install -y --freeze-installed -c numba icc_rt && \
-    # Install libjpeg turbo for speedup in image processing
-    conda install -y --freeze-installed libjpeg-turbo && \
-    # Add snakemake for workflow management
-    conda install -y -c bioconda -c conda-forge snakemake-minimal && \
-    # Add mamba as conda alternativ
-    conda install -y -c conda-forge mamba && \
-    # Faiss - A library for efficient similarity search and clustering of dense vectors.
-    conda install -y --freeze-installed faiss-cpu && \
-    # Install full pip requirements
-    pip install --no-cache-dir --upgrade --upgrade-strategy only-if-needed --use-deprecated=legacy-resolver -r ${RESOURCES_PATH}/libraries/requirements-full.txt && \
-    # Setup Spacy
-    # Spacy - download and large language removal
-    python -m spacy download en && \
     # Fix permissions
     fix-permissions.sh $CONDA_ROOT && \
     # Cleanup
@@ -676,67 +611,45 @@ COPY \
 # Add as jupyter system configuration
 COPY resources/jupyter/nbconfig /etc/jupyter/nbconfig
 COPY resources/jupyter/jupyter_notebook_config.json /etc/jupyter/
+COPY resources/libraries ${RESOURCES_PATH}/libraries
 
-# install jupyter extensions
+# Install necessary packages and jupyter extensions
 RUN \
-    # Create empty notebook configuration
+    apt-get update && \
+    apt-get install -y jq && \
+    pip install --no-cache-dir -r ${RESOURCES_PATH}/libraries/requirements-jupyter.txt && \
     mkdir -p $HOME/.jupyter/nbconfig/ && \
     printf "{\"load_extensions\": {}}" > $HOME/.jupyter/nbconfig/notebook.json && \
-    # Activate and configure extensions
     jupyter contrib nbextension install --sys-prefix && \
-    # nbextensions configurator
     jupyter nbextensions_configurator enable --sys-prefix && \
-    # Configure nbdime
     nbdime config-git --enable --global && \
-    # Activate Jupytext
     jupyter nbextension enable --py jupytext --sys-prefix && \
-    # Enable useful extensions
     jupyter nbextension enable skip-traceback/main --sys-prefix && \
-    # jupyter nbextension enable comment-uncomment/main && \
     jupyter nbextension enable toc2/main --sys-prefix && \
     jupyter nbextension enable execute_time/ExecuteTime --sys-prefix && \
     jupyter nbextension enable collapsible_headings/main --sys-prefix && \
     jupyter nbextension enable codefolding/main --sys-prefix && \
-    # Disable pydeck extension, cannot be loaded (404)
     jupyter nbextension disable pydeck/extension && \
-    # Install and activate Jupyter Tensorboard
     pip install --no-cache-dir git+https://github.com/InfuseAI/jupyter_tensorboard.git && \
     jupyter tensorboard enable --sys-prefix && \
-    # TODO moved to configuration files = resources/jupyter/nbconfig Edit notebook config
-    # echo '{"nbext_hide_incompat": false}' > $HOME/.jupyter/nbconfig/common.json && \
     cat $HOME/.jupyter/nbconfig/notebook.json | jq '.toc2={"moveMenuLeft": false,"widenNotebook": false,"skip_h1_title": false,"sideBar": true,"number_sections": false,"collapse_to_match_collapsible_headings": true}' > tmp.$$.json && mv tmp.$$.json $HOME/.jupyter/nbconfig/notebook.json && \
-    # If minimal flavor - exit here
     if [ "$WORKSPACE_FLAVOR" = "minimal" ]; then \
-        # Cleanup
         clean-layer.sh && \
         exit 0 ; \
     fi && \
-    # TODO: Not installed. Disable Jupyter Server Proxy
-    # jupyter nbextension disable jupyter_server_proxy/tree --sys-prefix && \
-    # Install jupyter black
     jupyter nbextension install https://github.com/drillan/jupyter-black/archive/master.zip --sys-prefix && \
     jupyter nbextension enable jupyter-black-master/jupyter-black --sys-prefix && \
-    # If light flavor - exit here
     if [ "$WORKSPACE_FLAVOR" = "light" ]; then \
-        # Cleanup
         clean-layer.sh && \
         exit 0 ; \
     fi && \
-    # Install and activate what if tool
     pip install witwidget && \
     jupyter nbextension install --py --symlink --sys-prefix witwidget && \
     jupyter nbextension enable --py --sys-prefix witwidget && \
-    # Activate qgrid
     jupyter nbextension enable --py --sys-prefix qgrid && \
-    # TODO: Activate Colab support
-    # jupyter serverextension enable --py jupyter_http_over_ws && \
-    # Activate Voila Rendering
-    # currently not working jupyter serverextension enable voila --sys-prefix && \
-    # Enable ipclusters
     ipcluster nbextension enable && \
-    # Fix permissions? fix-permissions.sh $CONDA_ROOT && \
-    # Cleanup
     clean-layer.sh
+
 
 # install jupyterlab
 RUN \
@@ -848,6 +761,7 @@ RUN \
 # Install vscode extension
 # https://github.com/cdr/code-server/issues/171
 # Alternative install: /usr/local/bin/code-server --user-data-dir=$HOME/.config/Code/ --extensions-dir=$HOME/.vscode/extensions/ --install-extension ms-python-release && \
+
 RUN \
     SLEEP_TIMER=25 && \
     # If minimal flavor -> exit here
@@ -1033,8 +947,8 @@ RUN \
     echo "[Desktop Entry]\nVersion=1.0\nType=Link\nName=Glances\nComment=Hardware Monitoring\nCategories=System;Utility;\nIcon=/resources/icons/glances-icon.png\nURL=http://localhost:8092/tools/glances" > /usr/share/applications/glances.desktop && \
     chmod +x /usr/share/applications/glances.desktop && \
     # Remove mail and logout desktop icons
-    rm /usr/share/applications/xfce4-mail-reader.desktop && \
-    rm /usr/share/applications/xfce4-session-logout.desktop
+    rm -f /usr/share/applications/xfce4-mail-reader.desktop && \
+    rm -f /usr/share/applications/xfce4-session-logout.desktop
 
 # Copy resources into workspace
 COPY resources/tools $RESOURCES_PATH/tools
