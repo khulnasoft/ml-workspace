@@ -17,7 +17,7 @@ done
 if ! hash netron 2>/dev/null; then
     echo "Installing Netron. Please wait..."
     # https://github.com/lutzroeder/netron
-    pipx install netron
+    pip install --no-cache-dir  netron
 else
     echo "Netron is already installed"
 fi

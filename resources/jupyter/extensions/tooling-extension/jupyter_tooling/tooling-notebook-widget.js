@@ -7,7 +7,8 @@ define([
   "./tooling-shared-components",
 ], function (Jupyter, $, dialog, utils, require, sharedComponents) {
   // -------- GLOBAL VARIABLES -----------------------
-  var basePathRegex = "^(.*?)/(tree|notebooks/|edit/|terminals/)";
+
+  var basePathRegex = "^(/.+?)/(tree|notebooks|edit|terminals)";
   var basePath =
     window.location.pathname.match(basePathRegex) == null
       ? ""

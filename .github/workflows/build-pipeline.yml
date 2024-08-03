@@ -1,4 +1,3 @@
-# Based on https://github.com/khulnasoft/ml-buildkit/blob/v0.6.6/workflows/build-pipeline.yml
 name: build-pipeline
 
 on:
@@ -10,7 +9,6 @@ on:
       working_directory:
         description: "Working directory from where the build command is run"
         required: false
-  # Do not auto-build on commit: push:
 
 env:
   BUILD_ARGS: ${{ secrets.BUILD_ARGS }}
@@ -29,10 +27,9 @@ jobs:
         if: ${{ github.event.inputs != null  &&  github.event.inputs.working_directory != null}}
         run: echo "::set-env name=WORKING_DIRECTORY::${{ github.event.inputs.working_directory }}"
         # new syntax: run: echo "WORKING_DIRECTORY=${{ github.event.inputs.working_directory }}" >> "$GITHUB_ENV"
-      # Set host ip to env variable to be uside within container actions
+      - uses: actions/checkout@v2
       - name: set-host-ip
         run: echo "::set-env name=_HOST_IP::$(hostname -I | cut -d ' ' -f 1)"
-      - uses: actions/checkout@v2
       - name: run-build-scripts
         uses: ./.github/actions/build-environment
         with:
