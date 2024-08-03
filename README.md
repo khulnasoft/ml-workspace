@@ -1,6 +1,6 @@
 <h1 align="center">
     <a href="https://github.com/khulnasoft/ml-workspace" title="ML Workspace Home">
-    <img width=50% alt="" src="https://github.com/khulnasoft/ml-workspace/raw/master/docs/images/ml-workspace-logo.png"> </a>
+    <img width=50% alt="" src="https://github.com/khulnasoft/ml-workspace/raw/main/docs/images/ml-workspace-logo.png"> </a>
     <br>
 </h1>
 
@@ -9,12 +9,12 @@
 </p>
 
 <p align="center">
-    <a href="https://hub.docker.com/r/khulnasoft/ml-workspace" title="Docker Image Version"><img src="https://images.microbadger.com/badges/version/khulnasoft/ml-workspace.svg"></a>
-    <a href="https://hub.docker.com/r/khulnasoft/ml-workspace" title="Docker Pulls"><img src="https://img.shields.io/docker/pulls/khulnasoft/ml-workspace.svg"></a>
-    <a href="https://hub.docker.com/r/khulnasoft/ml-workspace" title="Docker Image Metadata"><img src="https://images.microbadger.com/badges/image/khulnasoft/ml-workspace.svg"></a>
-    <a href="https://github.com/khulnasoft/ml-workspace/blob/master/LICENSE" title="ML Workspace License"><img src="https://img.shields.io/badge/License-Apache%202.0-green.svg"></a>
+    <a href="https://hub.docker.com/r/khulnasoft/ml-workspace" title="Docker Image Version"><img src="https://img.shields.io/docker/v/khulnasoft/ml-workspace?color=blue&sort=semver"></a>
+    <a href="https://hub.docker.com/r/khulnasoft/ml-workspace" title="Docker Pulls"><img src="https://img.shields.io/docker/pulls/khulnasoft/ml-workspace.svg?color=blue"></a>
+    <a href="https://hub.docker.com/r/khulnasoft/ml-workspace" title="Docker Image Size"><img src="https://img.shields.io/docker/image-size/khulnasoft/ml-workspace?color=blue&sort=semver"></a>
     <a href="https://gitter.im/khulnasoft/ml-workspace" title="Chat on Gitter"><img src="https://badges.gitter.im/khulnasoft/ml-workspace.svg"></a>
-    <a href="https://twitter.com/khulnasoft" title="KhulnaSoft DevOps on Twitter"><img src="https://img.shields.io/twitter/follow/khulnasoft.svg?style=social"></a>
+    <a href="https://khulnasoft.substack.com/subscribe" title="Subscribe to newsletter"><img src="http://bit.ly/2Md9rxM"></a>
+    <a href="https://twitter.com/khulnasoft" title="Follow on Twitter"><img src="https://img.shields.io/twitter/follow/khulnasoft.svg?style=social&label=Follow"></a>
 </p>
 
 <p align="center">
