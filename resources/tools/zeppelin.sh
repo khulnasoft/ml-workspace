@@ -15,7 +15,7 @@ for arg in "$@"; do
 done
 
 
-ZEPPELIN_VERSION=0.9.0
+ZEPPELIN_VERSION=0.8.2
 
 if [ ! -f "$RESOURCES_PATH/zeppelin/zeppelin-$ZEPPELIN_VERSION-bin-all/bin/zeppelin-daemon.sh"  ]; then
     echo "Installing Zeppelin. Please wait..."
@@ -48,6 +48,6 @@ if [ $INSTALL_ONLY = 0 ] ; then
     export ZEPPELIN_NOTEBOOK_DIR=$WORKSPACE_HOME/zeppelin
     export ZEPPELIN_PORT=$PORT
     # ZEPPELIN_CONF_DIR=$ZEPPELIN_HOME/conf
-    $ZEPPELIN_HOME/bin/zeppelin.sh
+    $ZEPPELIN_HOME/bin/zeppelin.sh start
     sleep 15
 fi

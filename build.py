@@ -13,7 +13,7 @@ FLAG_FLAVOR = "flavor"
 parser = argparse.ArgumentParser(add_help=False)
 parser.add_argument(
     "--" + FLAG_FLAVOR,
-    help="Flavor (full, light, minimal, gpu) used for docker container",
+    help="Flavor (full, light, minimal, r, spark, gpu) used for docker container",
     default="all",
 )
 
@@ -39,6 +39,12 @@ if flavor == "all":
 
     args[FLAG_FLAVOR] = "full"
     build_utils.build(".", args)
+
+    args[FLAG_FLAVOR] = "r"
+    build_utils.build("r-flavor", args)
+
+    args[FLAG_FLAVOR] = "spark"
+    build_utils.build("spark-flavor", args)
 
     args[FLAG_FLAVOR] = "gpu"
     build_utils.build("gpu-flavor", args)
@@ -117,7 +123,7 @@ if args[build_utils.FLAG_TEST]:
     container_ip = container.attrs["NetworkSettings"]["Networks"]["bridge"]["IPAddress"]
 
     completed_process = build_utils.run(
-        f"docker exec --env WORKSPACE_IP={container_ip} {workspace_name} pytest '/resources/tests'",
+        f"docker exec -it --env WORKSPACE_IP={container_ip} {workspace_name} pytest '/resources/tests'",
         exit_on_error=False,
     )
 

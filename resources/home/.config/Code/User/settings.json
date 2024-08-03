@@ -29,6 +29,5 @@
       "--line-width=88"
   ],
   "python.testing.pytestEnabled": true,
-  "workbench.colorTheme": "Default Dark+",
-  "python.pythonPath": "/opt/conda/bin/python"
+  "workbench.colorTheme": "Default Dark+"
 }

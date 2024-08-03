@@ -17,7 +17,7 @@ done
 if ! hash gpuview 2>/dev/null; then
     echo "Installing GPUview. Please wait..."
     # https://github.com/fgaim/gpuview
-    pipx install gpuview
+    pip install --no-cache-dir gpuview
 else
     echo "GPUview is already installed"
 fi

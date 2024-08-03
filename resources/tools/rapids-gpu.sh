@@ -16,9 +16,9 @@ done
 if hash nvcc 2>/dev/null; then
     # https://rapids.ai/start.html#conda-install
     echo "Installing Rapids.ai. Please wait..."
-    RAPIDS_VERSION=21.06
-    conda create -n rapids-$RAPIDS_VERSION -c rapidsai -c nvidia -c conda-forge -c defaults rapids-blazing=$RAPIDS_VERSION ipykernel python=3.8 cudatoolkit=11.0
-    conda run -n rapids-$RAPIDS_VERSION python -m ipykernel install --user --name=rapids-$RAPIDS_VERSION --display-name="rapids-$RAPIDS_VERSION"
+    conda create -n rapids-0.16 -c rapidsai -c nvidia -c conda-forge -c defaults rapids=0.16 python=3.8 ipykernel cudatoolkit=10.1
+    conda run -n rapids-0.16 python -m ipykernel install --user --name=rapids-0.16 --display-name="rapids-0.16"
+    # TODO: Install blazingsql
 else
     echo "NVCC / CUDA is not installed. Rapids.ai requires CUDA support, so it cannot be installed within this container."
 fi
