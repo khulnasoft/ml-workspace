@@ -114,7 +114,7 @@ lime==0.2.0.1
 line_profiler==3.3.0
 lmdb==1.2.1
 luigi==3.0.3
-lxml==4.6.3
+lxml==4.9.1
 Markdown==3.3.4
 MarkupSafe==2.0.1
 marshmallow==3.12.1
