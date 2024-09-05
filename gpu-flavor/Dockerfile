@@ -1,4 +1,4 @@
-ARG ARG_WORKSPACE_BASE_IMAGE="mltooling/ml-workspace:latest"
+ARG ARG_WORKSPACE_BASE_IMAGE="khulnasoft/ml-workspace:latest"
 # Build from full flavor of workspace with same version
 FROM $ARG_WORKSPACE_BASE_IMAGE
 

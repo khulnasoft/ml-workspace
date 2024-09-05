@@ -41,7 +41,7 @@ define([
     // Please check our documentation on information on what you can do with the workspace
     var div = $("<div/>");
     div.append(
-      '<p>SSH provides a powerful set of features that enables you to be more productive with your development tasks as documented <a target="_blank" href="https://github.com/ml-tooling/ml-workspace#ssh-access">here</a>. To setup a secure and passwordless SSH connection to this workspace, please execute: </p>'
+      '<p>SSH provides a powerful set of features that enables you to be more productive with your development tasks as documented <a target="_blank" href="https://github.com/khulnasoft/ml-workspace#ssh-access">here</a>. To setup a secure and passwordless SSH connection to this workspace, please execute: </p>'
     );
     div.append("<br>");
     div.append(
@@ -95,7 +95,7 @@ define([
     return div;
   }
 
-  //github.com/ml-tooling/ml-workspace#ssh-access
+  //github.com/khulnasoft/ml-workspace#ssh-access
   https: function load_ipython_extension() {
     // log to console
     console.info("Loaded Jupyter extension: Juypter Tooling");
@@ -129,7 +129,7 @@ define([
         }
       }
 
-      docs_button = '<form action="https://github.com/ml-tooling/ml-workspace#features"  target="_blank" style="display: inline-block;margin-left: 2px;"><button class="btn btn-default btn-sm"> <i class="fa-github fa"></i> Docs</button></form>'
+      docs_button = '<form action="https://github.com/khulnasoft/ml-workspace#features"  target="_blank" style="display: inline-block;margin-left: 2px;"><button class="btn btn-default btn-sm"> <i class="fa-github fa"></i> Docs</button></form>'
 
       tools_dropwdown =
         '<div id="start-tool-btn" class="btn-group" style="float: right; margin-left: 2px;"> \
@@ -138,7 +138,7 @@ define([
                 <ul id="start-tool" class="dropdown-menu" style="right: 0; left: auto;">' +
         tools_menu_items +
         '<li role="presentation" class="divider"></li>' +
-        '<li><div style="display: block;padding: 3px 20px;clear: both;font-weight: 400;line-height: 1.42857143;color: #333333;white-space: nowrap;"><div>Do you like ML Workspace?</div><span style="display: block; color: #gray; padding: initial; font-size: 12px;"><a href="https://github.com/ml-tooling/ml-workspace" style="color: #333333;font-weight: 550;" target="_blank">Give us a star</a> or <a href="https://twitter.com/mltooling" style="color: #333333;font-weight: 550;" target="_blank">follow us on Twitter!</a></span></div></li>' +
+        '<li><div style="display: block;padding: 3px 20px;clear: both;font-weight: 400;line-height: 1.42857143;color: #333333;white-space: nowrap;"><div>Do you like ML Workspace?</div><span style="display: block; color: #gray; padding: initial; font-size: 12px;"><a href="https://github.com/khulnasoft/ml-workspace" style="color: #333333;font-weight: 550;" target="_blank">Give us a star</a> or <a href="https://twitter.com/khulnasoft" style="color: #333333;font-weight: 550;" target="_blank">follow us on Twitter!</a></span></div></li>' +
         " </ul> </div>";        
 
       $("#header-container").append(docs_button);
