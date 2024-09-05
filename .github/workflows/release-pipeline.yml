@@ -120,7 +120,7 @@ jobs:
         name: checkout-fixed-release-drafter
         uses: actions/checkout@v2
         with:
-          repository: ml-tooling/release-drafter
+          repository: khulnasoft/release-drafter
           path: ./.git/cloned-actions/release-drafter
       - if: ${{ env.GITHUB_ACTOR != 'nektos/act' && env.GITHUB_TOKEN != null && env.GITHUB_TOKEN != '' }}
         name: create-release-draft
