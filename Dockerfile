@@ -310,23 +310,20 @@ RUN wget --no-verbose https://repo.anaconda.com/miniconda/Miniconda3-py38_${COND
     clean-layer.sh
 
 ENV PATH=$CONDA_ROOT/bin:$PATH
-
+ENV RESOURCES_PATH=/opt/resources
 # There is nothing added yet to LD_LIBRARY_PATH, so we can overwrite
 ENV LD_LIBRARY_PATH=$CONDA_ROOT/lib
 
 # Install pyenv to allow dynamic creation of python versions
-RUN git clone https://github.com/pyenv/pyenv.git $RESOURCES_PATH/.pyenv && \
-    # Install pyenv plugins based on pyenv installer
-    git clone https://github.com/pyenv/pyenv-virtualenv.git $RESOURCES_PATH/.pyenv/plugins/pyenv-virtualenv  && \
-    git clone git://github.com/pyenv/pyenv-doctor.git $RESOURCES_PATH/.pyenv/plugins/pyenv-doctor && \
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends git libffi-dev && \
+    git clone https://github.com/pyenv/pyenv.git $RESOURCES_PATH/.pyenv && \
+    git clone https://github.com/pyenv/pyenv-virtualenv.git $RESOURCES_PATH/.pyenv/plugins/pyenv-virtualenv && \
+    git clone https://github.com/pyenv/pyenv-doctor.git $RESOURCES_PATH/.pyenv/plugins/pyenv-doctor && \
     git clone https://github.com/pyenv/pyenv-update.git $RESOURCES_PATH/.pyenv/plugins/pyenv-update && \
     git clone https://github.com/pyenv/pyenv-which-ext.git $RESOURCES_PATH/.pyenv/plugins/pyenv-which-ext && \
-    apt-get update && \
-    # TODO: lib might contain high vulnerability
-    # Required by pyenv
-    apt-get install -y --no-install-recommends libffi-dev && \
     clean-layer.sh
-
+    
 # Add pyenv to path
 ENV PATH=$RESOURCES_PATH/.pyenv/shims:$RESOURCES_PATH/.pyenv/bin:$PATH \
     PYENV_ROOT=$RESOURCES_PATH/.pyenv
