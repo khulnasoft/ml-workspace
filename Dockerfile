@@ -1123,7 +1123,7 @@ ENV WORKSPACE_VERSION=$ARG_WORKSPACE_VERSION
 
 # Overwrite & add Labels
 LABEL \
-    "maintainer"="mltooling.team@gmail.com" \
+    "maintainer"="khulnasoft.team@gmail.com" \
     "workspace.version"=$WORKSPACE_VERSION \
     "workspace.flavor"=$WORKSPACE_FLAVOR \
     # Kubernetes Labels
@@ -1137,22 +1137,22 @@ LABEL \
     # Open Container labels: https://github.com/opencontainers/image-spec/blob/master/annotations.md
     "org.opencontainers.image.title"="Machine Learning Workspace" \
     "org.opencontainers.image.description"="All-in-one web-based development environment for machine learning." \
-    "org.opencontainers.image.documentation"="https://github.com/ml-tooling/ml-workspace" \
-    "org.opencontainers.image.url"="https://github.com/ml-tooling/ml-workspace" \
-    "org.opencontainers.image.source"="https://github.com/ml-tooling/ml-workspace" \
+    "org.opencontainers.image.documentation"="https://github.com/khulnasoft/ml-workspace" \
+    "org.opencontainers.image.url"="https://github.com/khulnasoft/ml-workspace" \
+    "org.opencontainers.image.source"="https://github.com/khulnasoft/ml-workspace" \
     # "org.opencontainers.image.licenses"="Apache-2.0" \
     "org.opencontainers.image.version"=$WORKSPACE_VERSION \
-    "org.opencontainers.image.vendor"="ML Tooling" \
+    "org.opencontainers.image.vendor"="KhulnaSoft DevOps" \
     "org.opencontainers.image.authors"="Lukas Masuch & Benjamin Raethlein" \
     "org.opencontainers.image.revision"=$ARG_VCS_REF \
     "org.opencontainers.image.created"=$ARG_BUILD_DATE \
     # Label Schema Convention (deprecated): http://label-schema.org/rc1/
     "org.label-schema.name"="Machine Learning Workspace" \
     "org.label-schema.description"="All-in-one web-based development environment for machine learning." \
-    "org.label-schema.usage"="https://github.com/ml-tooling/ml-workspace" \
-    "org.label-schema.url"="https://github.com/ml-tooling/ml-workspace" \
-    "org.label-schema.vcs-url"="https://github.com/ml-tooling/ml-workspace" \
-    "org.label-schema.vendor"="ML Tooling" \
+    "org.label-schema.usage"="https://github.com/khulnasoft/ml-workspace" \
+    "org.label-schema.url"="https://github.com/khulnasoft/ml-workspace" \
+    "org.label-schema.vcs-url"="https://github.com/khulnasoft/ml-workspace" \
+    "org.label-schema.vendor"="KhulnaSoft DevOps" \
     "org.label-schema.version"=$WORKSPACE_VERSION \
     "org.label-schema.schema-version"="1.0" \
     "org.label-schema.vcs-ref"=$ARG_VCS_REF \
