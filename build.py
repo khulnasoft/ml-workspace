@@ -3,10 +3,10 @@ import datetime
 import subprocess
 
 import docker
-from universal_build import build_utils
-from universal_build.helpers import build_docker
+from ml_buildkit import build_utils
+from ml_buildkit.helpers import build_docker
 
-REMOTE_IMAGE_PREFIX = "mltooling/"
+REMOTE_IMAGE_PREFIX = "khulnasoft/"
 COMPONENT_NAME = "ml-workspace"
 FLAG_FLAVOR = "flavor"
 
