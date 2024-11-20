@@ -1,7 +1,5 @@
-#!/bin/sh
-
-# Stops script execution if a command has an error
-set -e
+#!/bin/bash
+set -x  # Enable debug output
 
 INSTALL_ONLY=0
 PORT=""
