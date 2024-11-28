@@ -40,6 +40,14 @@ RUN apt-get update \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+# Install supervisor
+RUN apt-get update && \
+    apt-get install -y supervisor && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY supervisord.conf /etc/supervisor/supervisord.conf
+
 COPY extended-entrypoint.sh /extended-entrypoint.sh
 
 RUN chmod +x /extended-entrypoint.sh
