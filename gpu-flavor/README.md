@@ -21,4 +21,4 @@ Please visit our [Github repository](https://github.com/khulnasoft/ml-workspace#
 
 ---
 
-Licensed **Apache 2.0**. Created and maintained with ❤️ by developers from Berlin.
+Licensed **Apache 2.0**. Created and maintained with ❤️ by developers from Khulnasoft.
