@@ -1,5 +1,5 @@
 # Stage 1: Build stage
-FROM ubuntu:20.04 AS build
+FROM ubuntu:22.04 AS build
 
 USER root
 
@@ -213,9 +213,9 @@ COPY resources/nginx/lua-extensions /etc/nginx/nginx_plugins
 ENV \
     CONDA_DIR=/opt/conda \
     CONDA_ROOT=/opt/conda \
-    PYTHON_VERSION="3.8.10" \
-    CONDA_PYTHON_DIR=/opt/conda/lib/python3.8 \
-    MINICONDA_VERSION=4.9.2 \
+    PYTHON_VERSION="3.10.4" \
+    CONDA_PYTHON_DIR=/opt/conda/lib/python3.10 \
+    MINICONDA_VERSION=4.10.3 \
     MINICONDA_MD5=122c8c9beb51e124ab32a0fa6426c656 \
     CONDA_VERSION=4.9.2
 
@@ -787,7 +787,7 @@ LABEL \
     "org.label-schema.build-date"=$ARG_BUILD_DATE
 
 # Stage 2: Runtime stage
-FROM ubuntu:20.04 AS runtime
+FROM ubuntu:22.04 AS runtime
 
 COPY --from=build / /
 
