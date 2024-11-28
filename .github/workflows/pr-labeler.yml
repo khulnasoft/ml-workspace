@@ -1,21 +1,19 @@
-name: pr-labeler
-
+name: PR Labeler
 on:
-  - pull_request_target
+  pull_request:
+    types: [opened]
+
+permissions:
+  contents: read
 
 jobs:
   pr-labeler:
+    permissions:
+      contents: read # for TimonVS/pr-labeler-action to read config file
+      pull-requests: write # for TimonVS/pr-labeler-action to add labels in PR
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/labeler@main
+      - uses: TimonVS/pr-labeler-action@v5
         with:
-          repo-token: "${{ secrets.GITHUB_TOKEN }}"
-          configuration-path: .github/pr-labeler-file-path.yml
-          # workaround for problem: https://github.com/wesnoth/wesnoth/commit/958c82d0867568057caaf58356502ec8c87d8366
-          sync-labels: ""
-      - uses: TimonVS/pr-labeler-action@v3
-        with:
-          configuration-path: .github/pr-labeler-branch-name.yml
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-# Evaluate: https://github.com/srvaroa/labeler
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          configuration-path: .github/pr-labeler-file-path.yml # optional, .github/pr-labeler.yml is the default value
