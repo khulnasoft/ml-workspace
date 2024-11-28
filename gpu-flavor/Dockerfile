@@ -195,6 +195,14 @@ ENV TF_FORCE_GPU_ALLOW_GROWTH true
 
 ### CONFIGURATION ###
 
+# Install supervisor
+RUN apt-get update && \
+    apt-get install -y supervisor && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY supervisord.conf /etc/supervisor/supervisord.conf
+
 #TODO: tests are currently empty COPY resources/tests/ /resources/tests
 
 # argument needs to be initalized again
