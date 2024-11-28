@@ -1,5 +1,5 @@
 # Stage 1: Build stage
-FROM ubuntu:20.04 AS build
+FROM ubuntu:22.04 AS build
 
 USER root
 
@@ -94,7 +94,8 @@ RUN \
         xz-utils \
         gawk \
         swig \
-        graphviz libgraphviz-dev \
+        graphviz \
+        libgraphviz-dev \
         screen \
         nano \
         locate \
@@ -119,7 +120,8 @@ RUN \
         git \
         subversion \
         jed \
-        unixodbc unixodbc-dev \
+        unixodbc \
+        unixodbc-dev \
         libtiff-dev \
         libjpeg-dev \
         libpng-dev \
@@ -144,12 +146,11 @@ RUN \
         bzip2 \
         lzop \
         libarchive-tools \
-        zlibc \
         unp \
         libbz2-dev \
         liblzma-dev \
         zlib1g-dev && \
-    add-apt-repository -y ppa:git-core/ppa  && \
+    add-apt-repository -y ppa:git-core/ppa && \
     apt-get update && \
     apt-get install -y --no-install-recommends git && \
     chmod -R a+rwx /usr/local/bin/ && \
@@ -213,9 +214,9 @@ COPY resources/nginx/lua-extensions /etc/nginx/nginx_plugins
 ENV \
     CONDA_DIR=/opt/conda \
     CONDA_ROOT=/opt/conda \
-    PYTHON_VERSION="3.8.10" \
-    CONDA_PYTHON_DIR=/opt/conda/lib/python3.8 \
-    MINICONDA_VERSION=4.9.2 \
+    PYTHON_VERSION="3.10.4" \
+    CONDA_PYTHON_DIR=/opt/conda/lib/python3.10 \
+    MINICONDA_VERSION=4.10.3 \
     MINICONDA_MD5=122c8c9beb51e124ab32a0fa6426c656 \
     CONDA_VERSION=4.9.2
 
@@ -308,7 +309,7 @@ RUN \
     apt-get install -y --no-install-recommends xfce4-terminal && \
     apt-get install -y --no-install-recommends xfce4-clipman && \
     apt-get install -y --no-install-recommends xterm && \
-    apt-get install -y --no-install-recommends --allow-unauthenticated xfce4-taskmanager  && \
+    apt-get install -y --no-install-recommends --allow-unauthenticated xfce4-taskmanager && \
     apt-get install -y --no-install-recommends xauth xinit dbus-x11 && \
     apt-get install -y --no-install-recommends gdebi && \
     apt-get install -y --no-install-recommends catfish && \
@@ -326,12 +327,12 @@ RUN \
     apt-get install -y --no-install-recommends thunar-archive-plugin && \
     apt-get install -y xarchiver && \
     apt-get install -y --no-install-recommends sqlitebrowser && \
-    apt-get install -y --no-install-recommends nautilus gvfs-backends && \
-    apt-get install -y --no-install-recommends gigolo gvfs-bin && \
+    apt-get install -y --no-install-recommends nautilus && \
+    apt-get install -y --no-install-recommends gigolo && \
     apt-get install -y --no-install-recommends gftp && \
-    add-apt-repository ppa:saiarcot895/chromium-beta && \
+    add-apt-repository -y ppa:saiarcot895/chromium-beta && \
     apt-get update && \
-    apt-get install -y chromium-browser chromium-browser-l10n chromium-codecs-ffmpeg && \
+    apt-get install -y --no-install-recommends chromium-browser chromium-browser-l10n chromium-codecs-ffmpeg && \
     ln -s /usr/bin/chromium-browser /usr/bin/google-chrome && \
     apt-get purge -y pm-utils xscreensaver* && \
     apt-get remove -y app-install-data gnome-user-guide && \
@@ -386,16 +387,6 @@ RUN \
 
 ARG ARG_WORKSPACE_FLAVOR="full"
 ENV WORKSPACE_FLAVOR=$ARG_WORKSPACE_FLAVOR
-
-# Install Visual Studio Code
-COPY resources/tools/vs-code-desktop.sh $RESOURCES_PATH/tools/vs-code-desktop.sh
-RUN \
-    if [ "$WORKSPACE_FLAVOR" = "minimal" ]; then \
-        exit 0 ; \
-    fi && \
-    /bin/bash $RESOURCES_PATH/tools/vs-code-desktop.sh --install && \
-    clean-layer.sh
-
 # Install Firefox
 
 COPY resources/tools/firefox.sh $RESOURCES_PATH/tools/firefox.sh
@@ -425,13 +416,13 @@ RUN \
         'python='$PYTHON_VERSION \
         'mkl-service' \
         'mkl' \
-        'ipython=7.24.0' \
-        'notebook=6.4.*' \
-        'jupyterlab=3.0.*' \
-        'nbconvert=5.6.*' \
-        'yarl==1.5.*' \
-        'scipy==1.7.*' \
-        'numpy==1.19.*' \
+        'ipython' \
+        'notebook' \
+        'jupyterlab' \
+        'nbconvert' \
+        'yarl' \
+        'scipy' \
+        'numpy' \
         'scikit-learn' \
         'numexpr' && \
     conda config --system --set channel_priority false && \
@@ -539,7 +530,7 @@ RUN \
 COPY resources/jupyter/extensions $RESOURCES_PATH/jupyter-extensions
 
 RUN \
-    pip install --no-cache-dir $RESOURCES_PATH/jupyter-extensions/tooling-extension/ && \
+    pip install --no-cache-dir $RESOURCES_PATH/jupyter-extensions/tooling-extension && \
     clean-layer.sh
 
 # Install and activate ZSH
@@ -588,7 +579,7 @@ RUN \
     wget --no-verbose https://github.com/prettier/prettier-vscode/releases/download/v$PRETTIER_VERSION/prettier-vscode-$PRETTIER_VERSION.vsix && \
     bsdtar -xf prettier-vscode-$PRETTIER_VERSION.vsix extension && \
     rm prettier-vscode-$PRETTIER_VERSION.vsix && \
-    mv extension $HOME/.vscode/extensions/prettier-vscode-$PRETTIER_VERSION.vsix && \
+    mv extension $HOME/.vscode/extensions/prettier-vscode-$PRETTIER_VERSION && \
     VS_CODE_RUNNER_VERSION="0.9.17" && \
     wget --no-verbose https://github.com/formulahendry/vscode-code-runner/releases/download/$VS_CODE_RUNNER_VERSION/code-runner-$VS_CODE_RUNNER_VERSION.vsix && \
     bsdtar -xf code-runner-$VS_CODE_RUNNER_VERSION.vsix extension && \
@@ -599,7 +590,7 @@ RUN \
     wget --retry-on-http-error=429 --waitretry 15 --tries 5 --no-verbose https://marketplace.visualstudio.com/_apis/public/gallery/publishers/dbaeumer/vsextensions/vscode-eslint/$VS_ESLINT_VERSION/vspackage -O dbaeumer.vscode-eslint.vsix && \
     bsdtar -xf dbaeumer.vscode-eslint.vsix extension && \
     rm dbaeumer.vscode-eslint.vsix && \
-    mv extension $HOME/.vscode/extensions/dbaeumer.vscode-eslint-$VS_ESLINT_VERSION.vsix && \
+    mv extension $HOME/.vscode/extensions/dbaeumer.vscode-eslint-$VS_ESLINT_VERSION && \
     fix-permissions.sh $HOME/.vscode/extensions/ && \
     clean-layer.sh
 
@@ -787,7 +778,7 @@ LABEL \
     "org.label-schema.build-date"=$ARG_BUILD_DATE
 
 # Stage 2: Runtime stage
-FROM ubuntu:20.04 AS runtime
+FROM ubuntu:22.04 AS runtime
 
 COPY --from=build / /
 

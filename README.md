@@ -1184,4 +1184,4 @@ Refer to our [contribution guides](https://github.com/khulnasoft/ml-workspace/bl
 
 ---
 
-Licensed **Apache 2.0**. Created and maintained with ❤️&nbsp; by developers from Berlin.
+Licensed **Apache 2.0**. Created and maintained with ❤️&nbsp; by developers from Khulnasoft.
