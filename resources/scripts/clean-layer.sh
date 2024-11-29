@@ -1,4 +1,3 @@
-
 #!/bin/bash
 #
 # This scripts should be called at the end of each RUN command
