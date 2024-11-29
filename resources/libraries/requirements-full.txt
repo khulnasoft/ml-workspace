@@ -265,3 +265,4 @@ qgrid==1.3.1
 # too big tensorflow-probability==0.9.0
 # out of date: records==0.5.3
 # adanet==0.9.0 -> too many pinned dependencies
+torchvision==0

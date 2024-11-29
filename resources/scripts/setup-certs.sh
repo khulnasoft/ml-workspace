@@ -8,7 +8,14 @@ if [ ! -f ${SSL_RESOURCES_PATH}/$SSLNAME.crt ]; then
     echo "Generating self-signed certificate for SSL/HTTPS."
     SSLDAYS=365
 
-    openssl req -x509 -nodes -newkey rsa:2048 -keyout $SSLNAME.key -out $SSLNAME.crt  -days $SSLDAYS -subj '/C=DE/ST=Berlin/L=Berlin/CN=localhost' > /dev/null 2>&1
+    if ! openssl req -x509 -nodes -newkey rsa:2048 \
+        -keyout $SSLNAME.key \
+        -out $SSLNAME.crt \
+        -days $SSLDAYS \
+        -subj '/C=DE/ST=Khulnasoft/L=Khulnasoft/CN=localhost'; then
+        echo "Error: Failed to generate SSL certificate"
+        exit 1
+    fi
 
     mv $SSLNAME.crt ${SSL_RESOURCES_PATH}/$SSLNAME.crt
     mv $SSLNAME.key ${SSL_RESOURCES_PATH}/$SSLNAME.key

@@ -94,7 +94,8 @@ RUN \
         xz-utils \
         gawk \
         swig \
-        graphviz libgraphviz-dev \
+        graphviz \
+        libgraphviz-dev \
         screen \
         nano \
         locate \
@@ -119,7 +120,8 @@ RUN \
         git \
         subversion \
         jed \
-        unixodbc unixodbc-dev \
+        unixodbc \
+        unixodbc-dev \
         libtiff-dev \
         libjpeg-dev \
         libpng-dev \
@@ -144,12 +146,11 @@ RUN \
         bzip2 \
         lzop \
         libarchive-tools \
-        zlibc \
         unp \
         libbz2-dev \
         liblzma-dev \
         zlib1g-dev && \
-    add-apt-repository -y ppa:git-core/ppa  && \
+    add-apt-repository -y ppa:git-core/ppa && \
     apt-get update && \
     apt-get install -y --no-install-recommends git && \
     chmod -R a+rwx /usr/local/bin/ && \
@@ -308,7 +309,7 @@ RUN \
     apt-get install -y --no-install-recommends xfce4-terminal && \
     apt-get install -y --no-install-recommends xfce4-clipman && \
     apt-get install -y --no-install-recommends xterm && \
-    apt-get install -y --no-install-recommends --allow-unauthenticated xfce4-taskmanager  && \
+    apt-get install -y --no-install-recommends --allow-unauthenticated xfce4-taskmanager && \
     apt-get install -y --no-install-recommends xauth xinit dbus-x11 && \
     apt-get install -y --no-install-recommends gdebi && \
     apt-get install -y --no-install-recommends catfish && \
@@ -326,12 +327,12 @@ RUN \
     apt-get install -y --no-install-recommends thunar-archive-plugin && \
     apt-get install -y xarchiver && \
     apt-get install -y --no-install-recommends sqlitebrowser && \
-    apt-get install -y --no-install-recommends nautilus gvfs-backends && \
-    apt-get install -y --no-install-recommends gigolo gvfs-bin && \
+    apt-get install -y --no-install-recommends nautilus && \
+    apt-get install -y --no-install-recommends gigolo && \
     apt-get install -y --no-install-recommends gftp && \
-    add-apt-repository ppa:saiarcot895/chromium-beta && \
+    add-apt-repository -y ppa:saiarcot895/chromium-beta && \
     apt-get update && \
-    apt-get install -y chromium-browser chromium-browser-l10n chromium-codecs-ffmpeg && \
+    apt-get install -y --no-install-recommends chromium-browser --no-install-recommends chromium-browser-l10n --no-install-recommends chromium-codecs-ffmpeg
     ln -s /usr/bin/chromium-browser /usr/bin/google-chrome && \
     apt-get purge -y pm-utils xscreensaver* && \
     apt-get remove -y app-install-data gnome-user-guide && \
@@ -386,16 +387,6 @@ RUN \
 
 ARG ARG_WORKSPACE_FLAVOR="full"
 ENV WORKSPACE_FLAVOR=$ARG_WORKSPACE_FLAVOR
-
-# Install Visual Studio Code
-COPY resources/tools/vs-code-desktop.sh $RESOURCES_PATH/tools/vs-code-desktop.sh
-RUN \
-    if [ "$WORKSPACE_FLAVOR" = "minimal" ]; then \
-        exit 0 ; \
-    fi && \
-    /bin/bash $RESOURCES_PATH/tools/vs-code-desktop.sh --install && \
-    clean-layer.sh
-
 # Install Firefox
 
 COPY resources/tools/firefox.sh $RESOURCES_PATH/tools/firefox.sh
@@ -415,31 +406,66 @@ RUN \
 # Data science libraries requirements
 COPY resources/libraries ${RESOURCES_PATH}/libraries
 
-### Install main data science libs
+# Install main data science libs
+# Install main data science libs
 RUN \
     ln -s -f $CONDA_ROOT/bin/python /usr/bin/python && \
-    apt-get update && \
+    apt-get update && apt-get install -y --no-install-recommends \
+        libopenmpi-dev \
+        openmpi-bin \
+        liblapack-dev \
+        libatlas-base-dev \
+        libeigen3-dev \
+        libblas-dev \
+        libhdf5-dev \
+        libtbb-dev \
+        libtesseract-dev \
+        libopenexr-dev \
+        libgomp1 && \
     pip install --upgrade pip && \
-    conda config --add channels conda-forge && \
-    conda install -y \
-        'python='$PYTHON_VERSION \
-        'mkl-service' \
-        'mkl' \
-        'ipython=7.24.0' \
-        'notebook=6.4.*' \
-        'jupyterlab=3.0.*' \
-        'nbconvert=5.6.*' \
-        'yarl==1.5.*' \
-        'scipy==1.7.*' \
-        'numpy==1.19.*' \
-        'scikit-learn' \
-        'numexpr' && \
-    conda config --system --set channel_priority false && \
-    pip install --no-cache-dir --upgrade --upgrade-strategy only-if-needed -r ${RESOURCES_PATH}/libraries/requirements-minimal.txt && \
+    conda config --system --set channel_priority strict && \
     if [ "$WORKSPACE_FLAVOR" = "minimal" ]; then \
+        conda install -y --update-all "python=$PYTHON_VERSION" nomkl && \
+        pip install --no-cache-dir -r ${RESOURCES_PATH}/libraries/requirements-minimal.txt && \
         fix-permissions.sh $CONDA_ROOT && \
-        clean-layer.sh; \
-    fi
+        clean-layer.sh && \
+        exit 0 ; \
+    fi && \
+    if [ "$WORKSPACE_FLAVOR" != "minimal" ]; then \
+        conda install -y --update-all "python=$PYTHON_VERSION" mkl-service mkl && \
+        conda install -y --freeze-installed \
+            boost \
+            mkl-include && \
+        conda install -y -c mingfeima mkldnn && \
+        conda install -y -c pytorch "pytorch==1.10.*" cpuonly && \
+        conda install -y --freeze-installed \
+            'ipython' \
+            'notebook' \
+            'jupyterlab' \
+            'nbconvert' \
+            'yarl' \
+            'scipy' \
+            'numpy' \
+            scikit-learn \
+            numexpr && \
+        pip install --no-cache-dir -r ${RESOURCES_PATH}/libraries/requirements-light.txt && \
+        fix-permissions.sh $CONDA_ROOT && \
+        clean-layer.sh && \
+        exit 0 ; \
+    fi && \
+    if [ "$WORKSPACE_FLAVOR" = "full" ]; then \
+        conda install -y --freeze-installed \
+            libjpeg-turbo && \
+        conda install -y -c bioconda -c conda-forge snakemake-minimal && \
+        conda install -y -c conda-forge mamba && \
+        conda install -y --no-deps --freeze-installed faiss-cpu
+        pip install --no-cache-dir --use-deprecated=legacy-resolver \
+            -r ${RESOURCES_PATH}/libraries/requirements-full.txt && \
+        python -m spacy download en ; \
+    fi && \
+    fix-permissions.sh $CONDA_ROOT && \
+    clean-layer.sh && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Fix conda version
 RUN \
@@ -539,7 +565,7 @@ RUN \
 COPY resources/jupyter/extensions $RESOURCES_PATH/jupyter-extensions
 
 RUN \
-    pip install --no-cache-dir $RESOURCES_PATH/jupyter-extensions/tooling-extension/ && \
+    pip install --no-cache-dir $RESOURCES_PATH/jupyter-extensions/tooling-extension && \
     clean-layer.sh
 
 # Install and activate ZSH
@@ -588,7 +614,7 @@ RUN \
     wget --no-verbose https://github.com/prettier/prettier-vscode/releases/download/v$PRETTIER_VERSION/prettier-vscode-$PRETTIER_VERSION.vsix && \
     bsdtar -xf prettier-vscode-$PRETTIER_VERSION.vsix extension && \
     rm prettier-vscode-$PRETTIER_VERSION.vsix && \
-    mv extension $HOME/.vscode/extensions/prettier-vscode-$PRETTIER_VERSION.vsix && \
+    mv extension $HOME/.vscode/extensions/prettier-vscode-$PRETTIER_VERSION && \
     VS_CODE_RUNNER_VERSION="0.9.17" && \
     wget --no-verbose https://github.com/formulahendry/vscode-code-runner/releases/download/$VS_CODE_RUNNER_VERSION/code-runner-$VS_CODE_RUNNER_VERSION.vsix && \
     bsdtar -xf code-runner-$VS_CODE_RUNNER_VERSION.vsix extension && \
@@ -599,7 +625,7 @@ RUN \
     wget --retry-on-http-error=429 --waitretry 15 --tries 5 --no-verbose https://marketplace.visualstudio.com/_apis/public/gallery/publishers/dbaeumer/vsextensions/vscode-eslint/$VS_ESLINT_VERSION/vspackage -O dbaeumer.vscode-eslint.vsix && \
     bsdtar -xf dbaeumer.vscode-eslint.vsix extension && \
     rm dbaeumer.vscode-eslint.vsix && \
-    mv extension $HOME/.vscode/extensions/dbaeumer.vscode-eslint-$VS_ESLINT_VERSION.vsix && \
+    mv extension $HOME/.vscode/extensions/dbaeumer.vscode-eslint-$VS_ESLINT_VERSION && \
     fix-permissions.sh $HOME/.vscode/extensions/ && \
     clean-layer.sh
 
@@ -756,7 +782,7 @@ ENV WORKSPACE_VERSION=$ARG_WORKSPACE_VERSION
 
 # Overwrite & add Labels
 LABEL \
-    "maintainer"="khulnasoft.team@gmail.com" \
+    "maintainer"="info@khulnasoft.com" \
     "workspace.version"=$WORKSPACE_VERSION \
     "workspace.flavor"=$WORKSPACE_FLAVOR \
     "io.k8s.description"="All-in-one web-based development environment for machine learning." \
@@ -772,7 +798,7 @@ LABEL \
     "org.opencontainers.image.source"="https://github.com/khulnasoft/ml-workspace" \
     "org.opencontainers.image.version"=$WORKSPACE_VERSION \
     "org.opencontainers.image.vendor"="KhulnaSoft DevOps" \
-    "org.opencontainers.image.authors"="Lukas Masuch & Benjamin Raethlein" \
+    "org.opencontainers.image.authors"="Md Sulaiman & KhulnaSoft Lab" \
     "org.opencontainers.image.revision"=$ARG_VCS_REF \
     "org.opencontainers.image.created"=$ARG_BUILD_DATE \
     "org.label-schema.name"="Machine Learning Workspace" \
