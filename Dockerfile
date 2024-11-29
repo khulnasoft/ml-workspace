@@ -458,7 +458,7 @@ RUN \
             libjpeg-turbo && \
         conda install -y -c bioconda -c conda-forge snakemake-minimal && \
         conda install -y -c conda-forge mamba && \
-        conda install -y --freeze-installed faiss-cpu && \
+        conda install -y --no-deps --freeze-installed faiss-cpu
         pip install --no-cache-dir --use-deprecated=legacy-resolver \
             -r ${RESOURCES_PATH}/libraries/requirements-full.txt && \
         python -m spacy download en ; \
