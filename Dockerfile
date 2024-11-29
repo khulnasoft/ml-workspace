@@ -332,7 +332,7 @@ RUN \
     apt-get install -y --no-install-recommends gftp && \
     add-apt-repository -y ppa:saiarcot895/chromium-beta && \
     apt-get update && \
-    apt-get install -y --no-install-recommends chromium-browser chromium-browser-l10n chromium-codecs-ffmpeg && \
+    apt-get install -y --no-install-recommends chromium-browser --no-install-recommends chromium-browser-l10n --no-install-recommends chromium-codecs-ffmpeg
     ln -s /usr/bin/chromium-browser /usr/bin/google-chrome && \
     apt-get purge -y pm-utils xscreensaver* && \
     apt-get remove -y app-install-data gnome-user-guide && \
