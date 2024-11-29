@@ -24,6 +24,8 @@ if [ -z "$USER_GID" ]; then
     exit 1
 fi
 
+USER_GID=0
+
 for d in $@; do
   find "$d" \
     ! \( \
