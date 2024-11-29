@@ -755,7 +755,7 @@ def set_user_name(name: str, repo=None):
         repo.config_writer().set_value("user", "name", name).release()
     else:
         exit_code = subprocess.call(
-            'git config --global user.name "' + name + '"', shell=True
+            ["git", "config", "--global", "user.name", name]
         )
         if exit_code > 0:
             warnings.warn("Global name configuration failed.")
