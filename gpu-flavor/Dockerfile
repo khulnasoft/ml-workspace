@@ -131,13 +131,13 @@ RUN \
     conda install cudatoolkit=11.2 -c pytorch -c nvidia && \
     pip install --no-cache-dir torch==1.9.0+cu111 torchvision==0.10.0+cu111 torchaudio==0.9.0 -f https://download.pytorch.org/whl/torch_stable.html && \
     # Install cupy: https://cupy.chainer.org/
-    pip install --no-cache-dir cupy-cuda112 && \
+    pip install --no-cache-dir cupy-cuda112==9.6.0 && \
     # Install pycuda: https://pypi.org/project/pycuda
-    pip install --no-cache-dir pycuda && \
+    pip install --no-cache-dir pycuda==2021.1 && \
     # Install gpu utils libs
-    pip install --no-cache-dir gpustat py3nvml gputil && \
+    pip install --no-cache-dir gpustat==0.6.0 py3nvml==0.2.6 gputil==1.4.0 && \
     # Install scikit-cuda: https://scikit-cuda.readthedocs.io/en/latest/install.html
-    pip install --no-cache-dir scikit-cuda && \
+    pip install --no-cache-dir scikit-cuda==0.5.3 && \
     # Install tensorflow gpu
     pip uninstall -y tensorflow tensorflow-cpu intel-tensorflow && \
     pip install --no-cache-dir tensorflow-gpu==2.5.0 && \
@@ -150,20 +150,20 @@ RUN \
     # Update mxnet to gpu edition
     pip uninstall -y mxnet-mkl && \
     # cuda111 -> >= 11.1
-    pip install --no-cache-dir mxnet-cu112 && \
+    pip install --no-cache-dir mxnet-cu112==1.8.0 && \
     # install jax: https://github.com/google/jax#pip-installation
-    pip install --upgrade jax[cuda111] -f https://storage.googleapis.com/jax-releases/jax_releases.html && \
+    pip install --upgrade jax[cuda111]==0.2.12 -f https://storage.googleapis.com/jax-releases/jax_releases.html && \
     # Install pygpu - Required for theano: http://deeplearning.net/software/libgpuarray/
     conda install -y pygpu && \
     # Install lightgbm
     pip uninstall -y lightgbm && \
-    pip install lightgbm --install-option=--gpu --install-option="--opencl-include-dir=/usr/local/cuda/include/" --install-option="--opencl-library=/usr/local/cuda/lib64/libOpenCL.so"  && \
+    pip install lightgbm==3.2.1 --install-option=--gpu --install-option="--opencl-include-dir=/usr/local/cuda/include/" --install-option="--opencl-library=/usr/local/cuda/lib64/libOpenCL.so"  && \
     # nvidia python ml lib
-    pip install --upgrade --force-reinstall nvidia-ml-py3 && \
+    pip install --upgrade --force-reinstall nvidia-ml-py3==11.450.51 && \
     # SpeedTorch: https://github.com/Santosh-Gupta/SpeedTorch
-    pip install --no-cache-dir SpeedTorch && \
+    pip install --no-cache-dir SpeedTorch==0.1.0 && \
     # Ipyexperiments - fix memory leaks
-    pip install --no-cache-dir ipyexperiments && \
+    pip install --no-cache-dir ipyexperiments==0.8.0 && \
     # Cleanup
     clean-layer.sh
 
@@ -215,4 +215,3 @@ LABEL \
     "org.label-schema.version"=$WORKSPACE_VERSION \
     "org.label-schema.vcs-ref"=$ARG_VCS_REF \
     "org.label-schema.build-date"=$ARG_BUILD_DATE
-
