@@ -406,31 +406,66 @@ RUN \
 # Data science libraries requirements
 COPY resources/libraries ${RESOURCES_PATH}/libraries
 
-### Install main data science libs
+# Install main data science libs
+# Install main data science libs
 RUN \
     ln -s -f $CONDA_ROOT/bin/python /usr/bin/python && \
-    apt-get update && \
+    apt-get update && apt-get install -y --no-install-recommends \
+        libopenmpi-dev \
+        openmpi-bin \
+        liblapack-dev \
+        libatlas-base-dev \
+        libeigen3-dev \
+        libblas-dev \
+        libhdf5-dev \
+        libtbb-dev \
+        libtesseract-dev \
+        libopenexr-dev \
+        libgomp1 && \
     pip install --upgrade pip && \
-    conda config --add channels conda-forge && \
-    conda install -y \
-        'python='$PYTHON_VERSION \
-        'mkl-service' \
-        'mkl' \
-        'ipython' \
-        'notebook' \
-        'jupyterlab' \
-        'nbconvert' \
-        'yarl' \
-        'scipy' \
-        'numpy' \
-        'scikit-learn' \
-        'numexpr' && \
-    conda config --system --set channel_priority false && \
-    pip install --no-cache-dir --upgrade --upgrade-strategy only-if-needed -r ${RESOURCES_PATH}/libraries/requirements-minimal.txt && \
+    conda config --system --set channel_priority strict && \
     if [ "$WORKSPACE_FLAVOR" = "minimal" ]; then \
+        conda install -y --update-all "python=$PYTHON_VERSION" nomkl && \
+        pip install --no-cache-dir -r ${RESOURCES_PATH}/libraries/requirements-minimal.txt && \
         fix-permissions.sh $CONDA_ROOT && \
-        clean-layer.sh; \
-    fi
+        clean-layer.sh && \
+        exit 0 ; \
+    fi && \
+    if [ "$WORKSPACE_FLAVOR" != "minimal" ]; then \
+        conda install -y --update-all "python=$PYTHON_VERSION" mkl-service mkl && \
+        conda install -y --freeze-installed \
+            boost \
+            mkl-include && \
+        conda install -y -c mingfeima mkldnn && \
+        conda install -y -c pytorch "pytorch==1.10.*" cpuonly && \
+        conda install -y --freeze-installed \
+            'ipython' \
+            'notebook' \
+            'jupyterlab' \
+            'nbconvert' \
+            'yarl' \
+            'scipy' \
+            'numpy' \
+            scikit-learn \
+            numexpr && \
+        pip install --no-cache-dir -r ${RESOURCES_PATH}/libraries/requirements-light.txt && \
+        fix-permissions.sh $CONDA_ROOT && \
+        clean-layer.sh && \
+        exit 0 ; \
+    fi && \
+    if [ "$WORKSPACE_FLAVOR" = "full" ]; then \
+        conda install -y --freeze-installed \
+            libjpeg-turbo && \
+        conda install -y -c bioconda -c conda-forge snakemake-minimal && \
+        conda install -y -c conda-forge mamba && \
+        conda install -y --freeze-installed faiss-cpu && \
+        pip install --no-cache-dir --use-deprecated=legacy-resolver \
+            -r ${RESOURCES_PATH}/libraries/requirements-full.txt && \
+        python -m spacy download en ; \
+    fi && \
+    fix-permissions.sh $CONDA_ROOT && \
+    clean-layer.sh && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Fix conda version
 RUN \
@@ -747,7 +782,7 @@ ENV WORKSPACE_VERSION=$ARG_WORKSPACE_VERSION
 
 # Overwrite & add Labels
 LABEL \
-    "maintainer"="khulnasoft.team@gmail.com" \
+    "maintainer"="info@khulnasoft.com" \
     "workspace.version"=$WORKSPACE_VERSION \
     "workspace.flavor"=$WORKSPACE_FLAVOR \
     "io.k8s.description"="All-in-one web-based development environment for machine learning." \
@@ -763,7 +798,7 @@ LABEL \
     "org.opencontainers.image.source"="https://github.com/khulnasoft/ml-workspace" \
     "org.opencontainers.image.version"=$WORKSPACE_VERSION \
     "org.opencontainers.image.vendor"="KhulnaSoft DevOps" \
-    "org.opencontainers.image.authors"="Lukas Masuch & Benjamin Raethlein" \
+    "org.opencontainers.image.authors"="Md Sulaiman & KhulnaSoft Lab" \
     "org.opencontainers.image.revision"=$ARG_VCS_REF \
     "org.opencontainers.image.created"=$ARG_BUILD_DATE \
     "org.label-schema.name"="Machine Learning Workspace" \
