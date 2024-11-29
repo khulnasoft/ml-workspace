@@ -1171,7 +1171,7 @@ const UI = {
             return;
           }
           if (UI.rfb != null) {
-            text = e.clipboardData.getData("text");
+            text = e.clipboardData.getData("text").replace(/\n|\r/g, "");
             console.log("copy clipboard from local to vnc: " + text);
             controlBarClipboard.value = text;
             UI.rfb.clipboardPasteFrom(text);
@@ -1194,6 +1194,7 @@ const UI = {
               navigator.clipboard
                 .readText()
                 .then((text) => {
+                  text = text.replace(/\n|\r/g, "");
                   console.log("copy clipboard from local to vnc: " + text);
                   controlBarClipboard.value = text;
                   UI.rfb.clipboardPasteFrom(text);
