@@ -90,3 +90,16 @@ if ENV_SERVICE_USER and ENV_SERVICE_PASSWORD:
     call("echo '" + ENV_SERVICE_PASSWORD + "' | htpasswd -b -i -c /etc/nginx/.htpasswd '"\
             + ENV_SERVICE_USER +"'", shell=True)
 ###
+
+# Add configuration of supervisord.conf file for Nginx service
+SUPERVISORD_CONF_FILE = "/etc/supervisor/conf.d/nginx.conf"
+with open(SUPERVISORD_CONF_FILE, "w") as f:
+    f.write("[program:nginx]\n")
+    f.write("command=/usr/local/openresty/nginx/sbin/nginx -c /etc/nginx/nginx.conf -g \"daemon off;\"\n")
+    f.write("priority=50\n")
+    f.write("redirect_stderr=true\n")
+    f.write("stdout_logfile=/proc/1/fd/1\n")
+    f.write("stdout_logfile_maxbytes=0\n")
+    f.write("autostart=true\n")
+    f.write("autorestart=true\n")
+    f.write("startretries=5\n")

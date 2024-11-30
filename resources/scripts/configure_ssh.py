@@ -81,3 +81,16 @@ call("chmod 644 ~/.ssh/" + SSH_KEY_NAME + ".pub", shell=True)
 #call("chmod 644 ~/.ssh/config", shell=True)
 #call("chmod 644 ~/.ssh/" + SSH_KEY_NAME + ".pub", shell=True)
 ###
+
+# Add configuration of supervisord.conf file for SSH service
+SUPERVISORD_CONF_FILE = "/etc/supervisor/conf.d/sshd.conf"
+with open(SUPERVISORD_CONF_FILE, "w") as f:
+    f.write("[program:sshd]\n")
+    f.write("command=/usr/sbin/sshd -D\n")
+    f.write("priority=10\n")
+    f.write("redirect_stderr=true\n")
+    f.write("stdout_logfile=/proc/1/fd/1\n")
+    f.write("stdout_logfile_maxbytes=0\n")
+    f.write("autostart=true\n")
+    f.write("autorestart=true\n")
+    f.write("startretries=5\n")
