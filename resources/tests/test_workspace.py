@@ -38,7 +38,7 @@ def ssh_connection() -> str:
     with open(setup_ssh_file, "w") as f:
         f.write(r.text)
     # make the file executable for the user
-    os.chmod(setup_ssh_file, 0o744)
+    os.chmod(setup_ssh_file, 0o700)
 
     # Todo: Remove usage of pexpect when ssh setup script callable non-interactively
     import pexpect
