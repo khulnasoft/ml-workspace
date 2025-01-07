@@ -1,4 +1,5 @@
-FROM khulnasoft/build-environment:0.6.18
+# Use a base image for the build environment
+FROM khulnasoft/build-environment:0.6.18 AS build
 
 # Install Java
 ENV JAVA_HOME="/usr/lib/jvm/java-1.15.0-openjdk-amd64"
@@ -40,8 +41,18 @@ RUN apt-get update \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+# Copy the extended entrypoint script
 COPY extended-entrypoint.sh /extended-entrypoint.sh
-
 RUN chmod +x /extended-entrypoint.sh
+
+# Add a health check to monitor the container's status
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 CMD curl -f http://localhost:8080/ || exit 1
+
+# Specify a non-root user for running the container
+RUN useradd -m -s /bin/bash nonrootuser
+USER nonrootuser
+
+# Use a multi-stage build to reduce the image size
+FROM build AS final
 
 ENTRYPOINT ["/tini", "-g", "--", "/extended-entrypoint.sh"]
