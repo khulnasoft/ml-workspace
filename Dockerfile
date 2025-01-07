@@ -1,6 +1,7 @@
 # Stage 1: Build stage
 FROM ubuntu:22.04 AS build
 
+# Set environment variables
 USER root
 
 ### BASICS ###
@@ -822,3 +823,10 @@ ENTRYPOINT ["/tini", "-g", "--"]
 CMD ["python", "/resources/docker-entrypoint.py"]
 
 EXPOSE 8080
+
+# Add a health check to monitor the container's status
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 CMD curl -f http://localhost:8080/ || exit 1
+
+# Specify a non-root user for running the container
+RUN useradd -m -s /bin/bash nonrootuser
+USER nonrootuser
