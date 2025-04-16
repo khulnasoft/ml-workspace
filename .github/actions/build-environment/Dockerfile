@@ -6,12 +6,14 @@ RUN \
     add-apt-repository ppa:openjdk-r/ppa \
     && apt-get update \
     && apt-get install -y openjdk-15-jdk \
-    && dpkg-query -l
+    && dpkg-query -l \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install docker-compose
 RUN \
     curl -L "https://github.com/docker/compose/releases/download/1.28.5/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose \
-    && chmod +x /usr/local/bin/docker-compose
+    && chmod +x /usr/local/bin/docker-compose \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install kind for Kubernetes testing
 RUN \
@@ -24,12 +26,14 @@ COPY kind-config.yaml /kind-config.yaml
 RUN \
     curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.18.12/bin/linux/amd64/kubectl \
     && chmod +x ./kubectl \
-    && mv ./kubectl /usr/local/bin/kubectl
+    && mv ./kubectl /usr/local/bin/kubectl \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install lib required for psycopg2
 RUN \
   apt-get update \
-  && apt-get install -y libpq-dev
+  && apt-get install -y libpq-dev \
+  && rm -rf /var/lib/apt/lists/*
 
 # Update node and yarn version
 RUN apt-get update \

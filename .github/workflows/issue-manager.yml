@@ -22,17 +22,17 @@ jobs:
   issue-manager:
     runs-on: ubuntu-latest
     steps:
-      - uses: khulnasoft/issue-manager@0.5.0
+      - uses: khulnasoft/issue-manager@v0.5.0
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          config: >
+          config: |
             {
               "answered": {
-                "delay": 864000,
+                "delay": 604800,
                 "message": "Assuming the original need was handled, this will be automatically closed now. But feel free to add more comments or create new issues or PRs."
               },
               "waiting": {
-                "delay": 2628000,
+                "delay": 31449600,
                 "message": "As this PR has been waiting for the original user for a while but seems to be inactive, it's now going to be closed. But if there's anyone interested, feel free to create a new PR."
               }
             }

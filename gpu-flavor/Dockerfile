@@ -121,97 +121,36 @@ ENV LD_LIBRARY_PATH ${LD_LIBRARY_PATH}:/usr/local/cuda/extras/CUPTI/lib64
 
 ### GPU DATA SCIENCE LIBRARIES ###
 
-RUN \
-    apt-get update && \
-    apt-get install -y libomp-dev libopenblas-base && \
-    # Install pytorch gpu
-    # uninstall cpu only packages via conda
-    conda remove --force -y pytorch cpuonly && \
-    # https://pytorch.org/get-started/locally/
+# Install pytorch gpu
+# uninstall cpu only packages via conda
+RUN conda remove --force -y pytorch cpuonly && \
     conda install cudatoolkit=11.2 -c pytorch -c nvidia && \
     pip install --no-cache-dir torch==1.9.0+cu111 torchvision==0.10.0+cu111 torchaudio==0.9.0 -f https://download.pytorch.org/whl/torch_stable.html && \
-    # Install cupy: https://cupy.chainer.org/
-    pip install --no-cache-dir cupy-cuda112==9.6.0 && \
-    # Install pycuda: https://pypi.org/project/pycuda
-    pip install --no-cache-dir pycuda==2021.1 && \
-    # Install gpu utils libs
-    pip install --no-cache-dir gpustat==0.6.0 py3nvml==0.2.6 gputil==1.4.0 && \
-    # Install scikit-cuda: https://scikit-cuda.readthedocs.io/en/latest/install.html
-    pip install --no-cache-dir scikit-cuda==0.5.3 && \
-    # Install tensorflow gpu
-    pip uninstall -y tensorflow tensorflow-cpu intel-tensorflow && \
-    pip install --no-cache-dir tensorflow-gpu==2.5.0 && \
-    # Install ONNX GPU Runtime
-    pip uninstall -y onnxruntime && \
-    pip install --no-cache-dir onnxruntime-gpu==1.8.0 onnxruntime-training==1.8.0 && \
-    # Install faiss gpu - TODO: to large?
-    # conda remove --force -y faiss-cpu && \
-    # conda install -y faiss-gpu -c pytorch && \
-    # Update mxnet to gpu edition
-    pip uninstall -y mxnet-mkl && \
-    # cuda111 -> >= 11.1
-    pip install --no-cache-dir mxnet-cu112==1.8.0 && \
-    # install jax: https://github.com/google/jax#pip-installation
-    pip install --upgrade jax[cuda111]==0.2.12 -f https://storage.googleapis.com/jax-releases/jax_releases.html && \
-    # Install pygpu - Required for theano: http://deeplearning.net/software/libgpuarray/
-    conda install -y pygpu && \
-    # Install lightgbm
-    pip uninstall -y lightgbm && \
-    pip install lightgbm==3.2.1 --install-option=--gpu --install-option="--opencl-include-dir=/usr/local/cuda/include/" --install-option="--opencl-library=/usr/local/cuda/lib64/libOpenCL.so"  && \
-    # nvidia python ml lib
-    pip install --upgrade --force-reinstall nvidia-ml-py3==11.450.51 && \
-    # SpeedTorch: https://github.com/Santosh-Gupta/SpeedTorch
-    pip install --no-cache-dir SpeedTorch==0.1.0 && \
-    # Ipyexperiments - fix memory leaks
-    pip install --no-cache-dir ipyexperiments==0.8.0 && \
-    # Cleanup
-    clean-layer.sh
-
-# TODO install DALI: https://docs.nvidia.com/deeplearning/dali/user-guide/docs/installation.html#dali-and-ngc
-# TODO: if > Ubuntu 19.04 -> install nvtop: https://github.com/Syllo/nvtop
-# TODO: Install Arrrayfire: https://arrayfire.com/download/ pip install --no-cache-dir arrayfire && \
-# TODO Nvidia Apex: https://github.com/NVIDIA/apex
-
-# cd $RESOURCES_PATH && \
-# git clone https://github.com/NVIDIA/apex && \
-# cd apex  && \
-# # Surpress output - if there is a problem remove to see logs &> /dev/null
-# pip install -v --disable-pip-version-check --no-cache-dir --global-option="--cpp_ext" --global-option="--cuda_ext" ./ && \
-# rm -rf apex && \
-
-# https://www.anaconda.com/getting-started-with-gpu-computing-in-anaconda/
-
-# By default, the majority of GPU memory will be allocated by the first
-# execution of a TensorFlow graph. While this behavior can be desirable for
-# production pipelines, it is less desirable for interactive use. Set
-# TF_FORCE_GPU_ALLOW_GROWTH to change this default behavior as if the user had
-ENV TF_FORCE_GPU_ALLOW_GROWTH true
-
-### END DATA SCIENCE LIBRARIES ###
-
-### GPU TOOLS ###
-
-### END GPU TOOLS ###
-
-### CONFIGURATION ###
-
-#TODO: tests are currently empty COPY resources/tests/ /resources/tests
-
-# argument needs to be initalized again
-ARG ARG_WORKSPACE_VERSION="latest"
-ENV WORKSPACE_VERSION=$ARG_WORKSPACE_VERSION
-
-# Overwrite & add Labels
-ARG ARG_BUILD_DATE="unknown"
-ARG ARG_VCS_REF="unknown"
-
-LABEL \
-    "workspace.version"=$WORKSPACE_VERSION \
-    "workspace.flavor"=$WORKSPACE_FLAVOR \
-    "workspace.baseimage"=$ARG_WORKSPACE_BASE_IMAGE \
-    "org.opencontainers.image.version"=$WORKSPACE_VERSION \
-    "org.opencontainers.image.revision"=$ARG_VCS_REF \
-    "org.opencontainers.image.created"=$ARG_BUILD_DATE \
-    "org.label-schema.version"=$WORKSPACE_VERSION \
-    "org.label-schema.vcs-ref"=$ARG_VCS_REF \
-    "org.label-schema.build-date"=$ARG_BUILD_DATE
+# Install cupy: https://cupy.chainer.org/
+pip install --no-cache-dir cupy-cuda112==9.6.0 && \
+# Install pycuda: https://pypi.org/project/pycuda
+pip install --no-cache-dir pycuda==2021.1 && \
+# Install gpu utils libs
+pip install --no-cache-dir gpustat==0.6.0 py3nvml==0.2.6 gputil==1.4.0 && \
+# Install scikit-cuda: https://scikit-cuda.readthedocs.io/en/latest/install.html
+pip install --no-cache-dir scikit-cuda==0.5.3 && \
+# Install tensorflow gpu
+pip uninstall -y tensorflow tensorflow-cpu intel-tensorflow && \
+pip install --no-cache-dir tensorflow-gpu==2.5.0 && \
+# Install ONNX GPU Runtime
+pip uninstall -y onnxruntime && \
+pip install --no-cache-dir onnxruntime-gpu==1.8.0 onnxruntime-training==1.8.0 && \
+# Install faiss gpu - TODO: to large?
+# conda remove --force -y faiss-cpu && \
+# conda install -y faiss-gpu -c pytorch && \
+# Update mxnet to gpu edition
+pip uninstall -y mxnet-mkl && \
+# cuda111 -> >= 11.1
+pip install --upgrade --no-cache-dir mxnet-cu112==1.8.0 && \
+# install jax: https://github.com/google/jax#pip-installation
+pip install --upgrade --force-reinstall jax[cuda111]==0.2.12 -f https://storage.googleapis.com/jax-releases/jax_releases.html && \
+# Install pygpu - Required for theano: http://deeplearning.net/software/libgpuarray/
+conda install -y pygpu && \
+# Install lightgbm
+# Install pytorch gpu
+# uninstall cpu only packages via conda

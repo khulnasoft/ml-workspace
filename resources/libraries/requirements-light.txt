@@ -36,7 +36,6 @@ patsy==0.5.1 # A Python package for describing statistical models and for buildi
 boto3==1.17.101 # The AWS SDK for Python
 better-exceptions==0.3.3 # Pretty and helpful exceptions, automatically
 pretty-errors==1.2.22 # Prettifies Python exception output to make it legible.
-networkx==2.5.1 # Python package for creating and manipulating graphs and networks
 prometheus-client==0.11.0 # Python client for the Prometheus monitoring system.
 typer==0.3.2 # Typer, build great CLIs. Easy to code. Based on Python type hints.
 numba==0.53.1 # Compiling Python code using LLVM

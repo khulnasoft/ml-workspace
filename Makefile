@@ -24,27 +24,27 @@ help:
 	@echo "  clean                - Clean up build artifacts"
 
 # Build all components
-build:
+build: setup
 	$(ACT) -b -s BUILD_ARGS="--make" -j build
 
 # Build a specific sub-component (example: docs)
-build-subcomponent:
+build-subcomponent: setup
 	$(ACT) -b -s BUILD_ARGS="--make" -s WORKING_DIRECTORY="./docs" -j build
 
 # Run linting and style checks
-lint:
+lint: setup
 	$(ACT) -b -s BUILD_ARGS="--check" -j build
 
 # Run integration and unit tests
-test:
+test: setup
 	$(ACT) -b -s BUILD_ARGS="--test" -j build
 
 # Combine linting, building, and testing in one command
-check:
+check: setup
 	$(ACT) -b -s BUILD_ARGS="--check --make --test" -j build
 
 # Trigger a release process locally using Act
-release-local:
+release-local: setup
 	$(ACT) -b -s VERSION="$(VERSION)" -s GITHUB_TOKEN="$(GITHUB_TOKEN)" -j release
 
 # Trigger a release pipeline from GitHub Actions (use the version as the argument)
@@ -65,16 +65,15 @@ setup:
 	fi
 
 # Install dependencies within the container
-install-deps:
+install-deps: setup
 	@echo "Installing dependencies..."
 	@docker run --rm -v $(PWD):/workspace $(DOCKER_IMAGE) make install
 
 # Push Docker image to DockerHub or other registry
-push-docker:
+push-docker: setup
 	@echo "Pushing Docker image to the registry..."
 	@docker push $(DOCKER_IMAGE)
 
 # Example clean and release sequence
-release-clean:
-	make clean
+release-clean: clean
 	make release-local

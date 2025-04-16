@@ -11,47 +11,46 @@ on:
     types: [closed]
 
 env:
-  VERSION: ${{ secrets.VERSION }}
   BRANCH_PREFIX: "release/v"
   ACTIONS_ALLOW_UNSECURE_COMMANDS: true # TODO: only needed until act supports the new way
-  DEFAULT_BRANCH: main
 
 jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - if: ${{ github.event.milestone != null  &&  github.event.milestone.title != null }}
-        name: set-milestone-version
+      - name: set-version-from-milestone
+        if: github.event.milestone != null && github.event.milestone.title != null
         run: |
           echo "::set-env name=VERSION::$(sed "s/^v//" <<< "${{ github.event.milestone.title }}")"
           echo "::set-env name=PR_MILESTONE_LINK::-M ${{ github.event.milestone.title }}"
-      - if: ${{ github.event.inputs != null  &&  github.event.inputs.version != null }}
-        name: set-input-version
+      - name: set-version-from-input
+        if: github.event.inputs != null && github.event.inputs.version != null
         run: echo "::set-env name=VERSION::${{ github.event.inputs.version }}"
       - name: check-version
-        run: 'if [[ ! "${{ env.VERSION }}" =~ ^([0-9]+\.[0-9]+\.[0-9]+.*)$ ]]; then echo "The version is not valid: ${{ env.VERSION }}"; exit 1; fi'
+        run: |
+          if [[ ! "${{ env.VERSION }}" =~ ^([0-9]+\.[0-9]+\.[0-9]+.*)$ ]]; then
+            echo "The version is not valid: ${{ env.VERSION }}"
+            exit 1
+          fi
       - name: set-github-token
         run: echo "::set-env name=GITHUB_TOKEN::${{ secrets.GITHUB_TOKEN }}"
-      # Set host ip to env variable to be uside within container actions
       - name: set-host-ip
         run: echo "::set-env name=_HOST_IP::$(hostname -I | cut -d ' ' -f 1)"
-      # Fix git version for act if github token is provided
-      - if: ${{ env.GITHUB_ACTOR == 'nektos/act' && env.GITHUB_TOKEN != null && env.GITHUB_TOKEN != '' }}
-        name: install-latest-git
+      - name: install-latest-git
+        if: env.GITHUB_ACTOR == 'nektos/act' && env.GITHUB_TOKEN != null && env.GITHUB_TOKEN != ''
         run: |
           # Required for local checkout
           apt-get update
           apt-get install -y git
-      - if: ${{ env.GITHUB_TOKEN != null && env.GITHUB_TOKEN != '' }}
-        name: create-release-branch
+      - name: create-release-branch
+        if: env.GITHUB_TOKEN != null && env.GITHUB_TOKEN != ''
         uses: peterjgrainger/action-create-branch@v2.0.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           branch: "${{ env.BRANCH_PREFIX }}${{ env.VERSION }}"
-      - if: ${{ ! (env.GITHUB_TOKEN != null && env.GITHUB_TOKEN != '')  }}
-        uses: actions/checkout@v2
-      - if: ${{ env.GITHUB_TOKEN != null && env.GITHUB_TOKEN != '' }}
+      - name: checkout-release-branch
+        if: env.GITHUB_TOKEN != null && env.GITHUB_TOKEN != ''
         uses: actions/checkout@v2
         with:
           fetch-depth: 0
@@ -88,8 +87,8 @@ jobs:
           container_registry_url: ${{ secrets.CONTAINER_REGISTRY_URL }}
           container_registry_username: ${{ secrets.CONTAINER_REGISTRY_USERNAME }}
           container_registry_password: ${{ secrets.CONTAINER_REGISTRY_PASSWORD }}
-      - if: ${{ env.GITHUB_TOKEN != null && env.GITHUB_TOKEN != '' }}
-        name: push-changes
+      - name: push-changes
+        if: env.GITHUB_TOKEN != null && env.GITHUB_TOKEN != ''
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           branch: ${{ env.BRANCH_PREFIX }}${{ env.VERSION  }}
@@ -99,8 +98,8 @@ jobs:
           tagging_message: v${{ env.VERSION  }}
           skip_dirty_check: true
           commit_options: "--allow-empty"
-      - if: ${{ env.GITHUB_TOKEN != null && env.GITHUB_TOKEN != '' }}
-        name: create-pull-request
+      - name: create-pull-request
+        if: env.GITHUB_TOKEN != null && env.GITHUB_TOKEN != ''
         shell: bash
         run: |
           # Stops script execution if a command has an error
@@ -113,16 +112,16 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       # Fix of release drafter to allow different events to trigger the release
       # TODO: currently does not work with act
-      - if: ${{ env.GITHUB_ACTOR == 'nektos/act' && env.GITHUB_TOKEN != null && env.GITHUB_TOKEN != '' }}
+      - if: env.GITHUB_ACTOR == 'nektos/act' && env.GITHUB_TOKEN != null && env.GITHUB_TOKEN != ''
         name: no-relese-drafter-support
         run: echo "The release drafter currently does not work with act, please create the release from the Github UI."
-      - if: ${{ env.GITHUB_ACTOR != 'nektos/act' && env.GITHUB_TOKEN != null && env.GITHUB_TOKEN != '' }}
+      - if: env.GITHUB_ACTOR != 'nektos/act' && env.GITHUB_TOKEN != null && env.GITHUB_TOKEN != ''
         name: checkout-fixed-release-drafter
         uses: actions/checkout@v2
         with:
           repository: khulnasoft/release-drafter
           path: ./.git/cloned-actions/release-drafter
-      - if: ${{ env.GITHUB_ACTOR != 'nektos/act' && env.GITHUB_TOKEN != null && env.GITHUB_TOKEN != '' }}
+      - if: env.GITHUB_ACTOR != 'nektos/act' && env.GITHUB_TOKEN != null && env.GITHUB_TOKEN != ''
         name: create-release-draft
         uses: ./.git/cloned-actions/release-drafter
         with:
@@ -130,4 +129,3 @@ jobs:
           tag: v${{ env.VERSION  }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      # Optional: upload release assets via actions/upload-release-asset@v1 and via upload_url from release drafter

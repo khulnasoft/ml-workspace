@@ -15,6 +15,7 @@ parser.add_argument(
     "--" + FLAG_FLAVOR,
     help="Flavor (full, light, minimal, gpu) used for docker container",
     default="all",
+    choices=["all", "full", "light", "minimal", "gpu"],
 )
 
 args = build_utils.parse_arguments(argument_parser=parser)
@@ -25,72 +26,29 @@ docker_image_prefix = args.get(build_docker.FLAG_DOCKER_IMAGE_PREFIX)
 if not docker_image_prefix:
     docker_image_prefix = REMOTE_IMAGE_PREFIX
 
-if not args.get(FLAG_FLAVOR):
-    args[FLAG_FLAVOR] = "all"
-
 flavor = str(args[FLAG_FLAVOR]).lower().strip()
 
 if flavor == "all":
-    args[FLAG_FLAVOR] = "minimal"
-    build_utils.build(".", args)
+    flavors = ["minimal", "light", "full", "gpu"]
+else:
+    flavors = [flavor]
 
-    args[FLAG_FLAVOR] = "light"
-    build_utils.build(".", args)
-
-    args[FLAG_FLAVOR] = "full"
-    build_utils.build(".", args)
-
-    args[FLAG_FLAVOR] = "gpu"
-    build_utils.build("gpu-flavor", args)
-
-    build_utils.exit_process(0)
-
-# unknown flavor -> try to build from subdirectory
-if flavor not in ["full", "minimal", "light"]:
-    # assume that flavor has its own directory with build.py
+for flavor in flavors:
     build_utils.build(flavor + "-flavor", args)
-    build_utils.exit_process(0)
-
-docker_image_name = COMPONENT_NAME
-# Build full image without suffix if the flavor is not minimal or light
-if flavor in ["minimal", "light"]:
-    docker_image_name += "-" + flavor
-
-# docker build
-git_rev = "unknown"
-try:
-    git_rev = (
-        subprocess.check_output(["git", "rev-parse", "--short", "HEAD"])
-        .decode("ascii")
-        .strip()
-    )
-except Exception:
-    pass
-
-build_date = datetime.datetime.utcnow().isoformat("T") + "Z"
-try:
-    build_date = (
-        subprocess.check_output(["date", "-u", "+%Y-%m-%dT%H:%M:%SZ"])
-        .decode("ascii")
-        .strip()
-    )
-except Exception:
-    pass
-
-vcs_ref_build_arg = " --build-arg ARG_VCS_REF=" + str(git_rev)
-build_date_build_arg = " --build-arg ARG_BUILD_DATE=" + str(build_date)
-flavor_build_arg = " --build-arg ARG_WORKSPACE_FLAVOR=" + str(flavor)
-version_build_arg = " --build-arg ARG_WORKSPACE_VERSION=" + VERSION
 
 if args[build_utils.FLAG_MAKE]:
+    docker_image_name = COMPONENT_NAME
+    if flavor in ["minimal", "light"]:
+        docker_image_name += "-" + flavor
+
+    git_rev = build_utils.get_git_revision()
+    build_date = datetime.datetime.utcnow().isoformat("T") + "Z"
+
     build_args = (
-        version_build_arg
-        + " "
-        + flavor_build_arg
-        + " "
-        + vcs_ref_build_arg
-        + " "
-        + build_date_build_arg
+        f" --build-arg ARG_VCS_REF={git_rev}"
+        f" --build-arg ARG_BUILD_DATE={build_date}"
+        f" --build-arg ARG_WORKSPACE_FLAVOR={flavor}"
+        f" --build-arg ARG_WORKSPACE_VERSION={VERSION}"
     )
 
     completed_process = build_docker.build_docker_image(
@@ -98,6 +56,7 @@ if args[build_utils.FLAG_MAKE]:
     )
     if completed_process.returncode > 0:
         build_utils.exit_process(1)
+
 
 if args[build_utils.FLAG_TEST]:
     workspace_name = f"workspace-test-{flavor}"

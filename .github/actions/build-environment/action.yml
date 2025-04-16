@@ -1,22 +1,27 @@
-name: "build-environment"
-description: "Environment to run build, test, check, and release steps."
-author: "KhulnaSoft <info@khulnasoft.com>"
+name: Build Environment
+description: Environment to run build, test, check, and release steps
+author: KhulnaSoft <info@khulnasoft.com>
 inputs:
   build_args:
-    description: "Build arguments passed to the build.py scripts"
+    description: Build arguments passed to the build.py scripts
     required: false
+    default: ""
   working_directory:
-    description: "Working directory from where the build command is run"
+    description: Working directory from where the build command is run
     required: false
+    default: $GITHUB_WORKSPACE
   container_registry_url:
-    description: "URL used for container registry login"
+    description: URL used for container registry login
     required: false
+    default: ""
   container_registry_username:
-    description: "Username used for container registry login"
+    description: Username used for container registry login
     required: false
+    default: ""
   container_registry_password:
-    description: "Password used for container registry login"
+    description: Password used for container registry login
     required: false
+    default: ""
 
 runs:
   using: "docker"

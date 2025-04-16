@@ -197,7 +197,6 @@ tensorboard==2.5.0
 tensorflow-addons==0.13.0
 tensorflow-datasets==4.3.0
 tensorflow-hub==0.12.0
-tensorflow-model-optimization==0.6.0
 tensorflow-text==2.5.0
 tensorflowonspark==2.2.4
 tensorlayer==2.2.3
@@ -210,59 +209,3 @@ tf-explain==0.3.0
 tflearn==0.5.0
 theano==1.0.5
 thinc==8.0.6
-tinydb==4.5.0
-tokenizers==0.10.3
-torch==1.9.0
-torch-geometric==1.7.2
-torchsummary==1.5.1
-torchvision==0.10.0
-torchaudio==0.9.0
-torchtext==0.10.0
-tpot==0.11.7
-transformers==4.8.1
-# tsfresh==0.18.0 Comment: has a dependency to matrixprofile which has a conflict of the protobuf library
-tslearn==0.5.1.0
-typing-extensions==3.7.4
-umap-learn==0.5.1
-vega==3.5.0
-vega_datasets==0.9.0
-vispy==0.6.6
-vowpalwabbit==8.10.2
-websockets==9.1
-wordcloud==1.8.1
-xarray==0.18.2
-xlearn==0.40a1
-xlrd==2.0.1
-xmltodict==0.12.0
-yapf==0.31.0
-yappi==1.3.2
-# yellowbrick==1.3.post1
-yfinance==0.1.59
-you-get==0.4.1527
-# pycaret==2.3.1
-crc32c==2.2.post0
-SoundFile==0.10.3.post1
-gpflow==2.2.1
-
-# Jupyter
-facets-overview==1.0.0
-jupyter-client==6.2.0
-jupyter-console==6.4.0
-jupyter-core==4.7.1
-jupyter-kernel-gateway==2.5.0
-jupyter-server==1.9.0
-jupyter-server-proxy==3.0.2
-nbval==0.9.6
-papermill==2.3.3
-pivottablejs==0.9.0
-pythreejs==2.3.0
-qgrid==1.3.1
-
-# jupyter_http_over_ws==0.0.7
-# Brokern: nbinteract==0.2.5
-# TOO big: apache-libcloud==3.2.0
-# Move to google utils: pandas-gbq==0.13.0
-# too big tensorflow-probability==0.9.0
-# out of date: records==0.5.3
-# adanet==0.9.0 -> too many pinned dependencies
-torchvision==0
