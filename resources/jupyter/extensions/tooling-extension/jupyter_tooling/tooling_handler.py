@@ -123,7 +123,7 @@ class ToolingHandler(IPythonHandler):
     def get(self):
         """
         Respond with the list of workspace tooling definitions discovered in HOME/.workspace/tools/ as a JSON array.
-        
+
         Scans all `*.json` files in the workspace tooling folder, loads each file as either a single tool (dict) or a list of tools, and deduplicates entries by the `id` field. If no tools are found, returns a default VNC tool entry. Failures to load individual files are logged; unexpected errors are reported as an HTTP 500 response.
         """
         try:
@@ -219,7 +219,7 @@ class GitInfoHandler(IPythonHandler):
     def post(self):
         """
         Set the Git user name and email for the repository located at the resolved request path.
-        
+
         Expects a query parameter "path" (resolved against the server root) and a JSON body containing "name" and "email". Validates both fields and sets the repository's local git config values user.name and user.email. Responds with HTTP 400 if the body is missing or either field is invalid, and with HTTP 500 if an internal error occurs while locating the repository or applying the configuration.
         """
         path = _resolve_path(self.get_argument("path", None))
@@ -430,9 +430,9 @@ class StorageCheckHandler(IPythonHandler):
     def get(self) -> None:
         """
         Responds with current storage usage, configured limits, and warning flags for the container and workspace folder.
-        
+
         Throttles costly metadata refreshes (checks are skipped if a recent update exists) and triggers a background metadata update when needed. The HTTP response is finished with a JSON object describing sizes (in GB), configured limits, and whether each limit is exceeded.
-        
+
         Returns:
             A JSON object with the following keys:
             - `containerSize` (number): Current container size in gigabytes (rounded to 1 decimal) when a container limit is configured.
@@ -441,7 +441,7 @@ class StorageCheckHandler(IPythonHandler):
             - `workspaceFolderSize` (number): Current workspace folder size in gigabytes (rounded to 1 decimal) when a workspace limit is configured.
             - `workspaceFolderSizeLimit` (number): Configured workspace folder size limit in gigabytes (rounded).
             - `workspaceFolderSizeWarning` (boolean): `true` if the workspace folder size exceeds the configured limit, `false` otherwise.
-        
+
         When neither limit is configured, returns an object with both warning flags set to `false`.
         """
         try:
@@ -525,12 +525,12 @@ class StorageCheckHandler(IPythonHandler):
 def get_last_usage_date(path):
     """
     Return the most recent usage timestamp for a filesystem path based on modification, access, and creation times.
-    
+
     The function compares the file's modification time, access time, and creation time by calendar date (day precision) and returns the newest corresponding datetime. If the path does not exist or any filesystem errors occur while reading timestamps, the function returns `None`.
-    
+
     Parameters:
         path (str): Filesystem path to check.
-    
+
     Returns:
         datetime or None: A datetime for the latest usage date (mtime/atime/ctime) or `None` if unavailable.
     """
@@ -561,12 +561,12 @@ def get_last_usage_date(path):
 def update_workspace_metadata():
     """
     Update the workspace metadata file with a current timestamp and optional size metrics.
-    
+
     Writes a JSON file named "metadata.json" into WORKSPACE_CONFIG_FOLDER containing:
     - update_timestamp: current datetime string,
     - container_size_in_kb: integer size of the container root in kilobytes or None if not computed,
     - workspace_folder_size_in_kb: integer size of WORKSPACE_HOME in kilobytes or None if not computed.
-    
+
     When MAX_CONTAINER_SIZE is set the function attempts to compute the container size; when MAX_WORKSPACE_FOLDER_SIZE is set it attempts to compute the workspace folder size. Computation failures are suppressed; in that case the corresponding value remains None.
     """
     workspace_metadata = {
@@ -633,9 +633,9 @@ def get_workspace_folder_size():
 def get_minutes_since_size_update():
     """
     Return the number of minutes elapsed since the workspace metadata update timestamp.
-    
+
     Reads the "update_timestamp" field from the workspace metadata file (expected format "%Y-%m-%d %H:%M:%S.%f") and returns the elapsed whole minutes truncated to the range 0–59. Returns `None` if the metadata file or timestamp is missing or cannot be parsed.
-    
+
     Returns:
         int: Minutes (0–59) since the last update, or `None` if unavailable or invalid.
     """
@@ -661,9 +661,9 @@ def get_inactive_days():
     # read inactive days from metadata timestamp (update when user is actively using the workspace)
     """
     Return the number of whole days since the workspace's last recorded update.
-    
-    Reads WORKSPACE_CONFIG_FOLDER/metadata.json and parses the `update_timestamp` (format "%Y-%m-%d %H:%M:%S.%f"). 
-    
+
+    Reads WORKSPACE_CONFIG_FOLDER/metadata.json and parses the `update_timestamp` (format "%Y-%m-%d %H:%M:%S.%f").
+
     Returns:
         inactive_days (int): Whole days elapsed since `update_timestamp`. Returns 0 if the metadata file or timestamp is missing or cannot be parsed.
     """
@@ -696,9 +696,9 @@ def cleanup_folder(
 ):
     """
     Remove large or long-unused files from a folder to free disk space.
-    
+
     Files whose size is greater than or equal to `max_file_size_mb` and whose last usage is older than `last_file_usage` days are removed. After scanning, workspace metadata is updated. Optionally writes a `.removed.txt` next to each removed file containing the removal reason.
-    
+
     Parameters:
         folder_path (str): Root folder to scan and clean.
         max_file_size_mb (int): Threshold size in megabytes; files with size >= this value are eligible for removal. If falsy, size is ignored.
@@ -807,9 +807,9 @@ def get_repo(directory: str):
 def set_user_email(email: str, repo=None):
     """
     Set the Git user email for a repository or for the global Git configuration.
-    
+
     If `repo` is provided, write the email to that repository's local Git config; otherwise attempt to set the global Git `user.email`. If setting the global configuration fails, a warning is emitted.
-    
+
     Parameters:
         email (str): Email address to set as the Git user email.
         repo (optional): A git.Repo instance whose local configuration should be updated. If omitted, the global Git configuration is used.
@@ -825,9 +825,9 @@ def set_user_email(email: str, repo=None):
 def set_user_name(name: str, repo=None):
     """
     Configure the Git user name for a repository or the global Git configuration.
-    
+
     Sets the `user.name` value in the provided repository's local configuration when `repo` is given; otherwise attempts to set the global Git `user.name`. If the global configuration command fails, a runtime warning is emitted.
-    
+
     Parameters:
         name (str): The user name to set for Git commits.
         repo (optional): A git.Repo instance whose local configuration should be updated; if omitted, the global Git configuration is used.
@@ -843,13 +843,13 @@ def set_user_name(name: str, repo=None):
 def commit_file(file_path: str, commit_msg: str = None, push: bool = True):
     """
     Stage, commit, and optionally push a single file to its containing git repository.
-    
+
     Parameters:
         file_path (str): Path to the file to commit.
         commit_msg (str, optional): Commit message to use. If omitted, a default message
             "Updated <relative-path>" is used relative to the repository root.
         push (bool, optional): If True, push the commit to the remote named "origin".
-    
+
     Raises:
         Exception: If the file does not exist.
         Exception: If no git repository can be found for the file.
@@ -1073,11 +1073,11 @@ def generate_token(base_url: str):
 def get_setup_script(hostname: str = None, port: str = None):
     """
     Builds the client SSH setup script by embedding the runtime private key, host/port values, keyscan entry, and a generated runtime configuration name.
-    
+
     Parameters:
         hostname (str | None): Hostname to use for the runtime or, when SSH_JUMPHOST_TARGET is set, the manager host. If None, placeholders in the template may remain.
         port (str | None): Port to use for the runtime or, when SSH_JUMPHOST_TARGET is set, the manager port.
-    
+
     Returns:
         str: The rendered setup script with all template placeholders substituted (private key, hostname/port, known-hosts entry, and runtime config name).
     """

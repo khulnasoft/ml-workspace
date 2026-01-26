@@ -14,9 +14,9 @@ from IPython.display import HTML, display
 def _tensorboard_magic(line):
     """
     Display a TensorBoard instance in the notebook for a specified log directory.
-    
+
     Parses the magic's argument string for a `--logdir` option (default "/workspace/"), requests a TensorBoard session from the Jupyter TensorBoard server extension, and injects an iframe that loads the created TensorBoard page.
-    
+
     Parameters:
         line (str): The raw argument string passed to the line magic; supports `--logdir <path>`.
     """
@@ -59,7 +59,7 @@ def _tensorboard_magic(line):
 def load_ipython_extension(_ipython):
     """
     Deprecated loader kept for compatibility; instructs users to use '%load_ext tensorboard' and always raises a RuntimeError.
-    
+
     Raises:
         RuntimeError: Always raised with the message "Use '%load_ext tensorboard' instead of '%load_ext tensorboard.notebook'."
     """

@@ -1,4 +1,5 @@
 import argparse
+import contextlib
 import datetime
 import os
 import subprocess
@@ -43,14 +44,12 @@ if flavor in ["minimal", "light"]:
 
 if args[build_utils.FLAG_MAKE]:
     git_rev = "unknown"
-    try:
+    with contextlib.suppress(Exception):
         git_rev = (
             subprocess.check_output(["git", "rev-parse", "--short", "HEAD"])
             .decode("ascii")
             .strip()
         )
-    except Exception:
-        pass
 
     build_date = datetime.datetime.now(timezone.utc).isoformat("T") + "Z"
 

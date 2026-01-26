@@ -21,12 +21,12 @@ log = logging.getLogger(__name__)
 def call(command):
     """
     Execute a shell command and return its exit status.
-    
+
     Prints the command to standard output before execution.
-    
+
     Parameters:
         command (str): Shell command to execute.
-    
+
     Returns:
         int: Exit status code from the executed command.
     """

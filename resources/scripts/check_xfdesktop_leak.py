@@ -23,10 +23,10 @@ logging.basicConfig(
 def get_process_id(name):
     """
     Get process IDs that match a (partial) process name.
-    
+
     Parameters:
         name (str): Process name or substring to search for.
-    
+
     Returns:
         list[int]: A list of matching process IDs as integers.
     """
