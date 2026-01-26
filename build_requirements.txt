@@ -1,5 +1,5 @@
-pipenv==2024.4.0
+pipenv==2026.0.3
 ml-buildkit==0.6.18
-urllib3==2.5.0
+urllib3==2.6.3
 twine==5.1.1
 docker==7.1.0
