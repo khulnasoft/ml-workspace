@@ -26,8 +26,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: set-host-ip
-        run: echo "::set-env name=_HOST_IP::$(hostname -I | cut -d ' ' -f 1)"
-      - uses: actions/checkout@v2
+        run: echo "_HOST_IP=$(hostname -I | cut -d ' ' -f 1)" >> $GITHUB_ENV
+      - uses: actions/checkout@v4
+      - name: setup-python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+      - name: install-build-requirements
+        run: pip install -r build_requirements.txt
+      - name: run-lint
+        run: ruff check .
       - name: run-build-scripts
         uses: ./.github/actions/build-environment
         with:
@@ -35,3 +44,9 @@ jobs:
           working_directory: ${{ env.WORKING_DIRECTORY }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: generate-sbom
+        run: make sbom
+      - name: scan-vulnerabilities
+        run: make scan
+      - name: audit-policy
+        run: make audit

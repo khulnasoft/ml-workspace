@@ -1,0 +1,24 @@
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "C4", "ARG", "SIM"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"resources/jupyter/ipython_config.py" = ["F821"]
+"resources/jupyter/jupyter_notebook_config.py" = ["F821"]
+"resources/scripts/check_xfdesktop_leak.py" = ["B018"]
+"resources/tests/ml-job/__main__.py" = ["B007"]
+"resources/tests/ml-service/__main__.py" = ["ARG001"]
+"resources/jupyter/tensorboard_notebook_patch.py" = ["ARG001"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[tool.pytest.ini_options]
+testpaths = ["resources/tests"]
+python_files = ["test_*.py"]

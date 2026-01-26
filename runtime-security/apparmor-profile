@@ -1,0 +1,47 @@
+#include <tunables/global>
+
+profile ml-workspace-hardened flags=(attach_disconnected,mediate_deleted) {
+  #include <abstractions/base>
+  #include <abstractions/python>
+  #include <abstractions/node>
+  #include <abstractions/nameservice>
+
+  # Allow basic process management
+  capability chown,
+  capability dac_override,
+  capability setgid,
+  capability setuid,
+  capability sys_chroot,
+  capability sys_ptrace,
+
+  # Deny suspicious capabilities
+  deny capability sys_admin,
+  deny capability sys_module,
+  deny capability sys_rawio,
+  deny capability sys_time,
+
+  # Filesystem restrictions
+  /usr/bin/** ix,
+  /usr/local/bin/** ix,
+  /opt/conda/** r,
+  /opt/conda/bin/** ix,
+  
+  # Workspace data access
+  /workspace/** rwk,
+  
+  # Configuration access
+  /resources/** r,
+  /resources/scripts/** ix,
+  
+  # Deny access to sensitive host info if mounted
+  deny /etc/shadow r,
+  deny /etc/passwd w,
+  deny /root/** rw,
+  
+  # Allow networking
+  network inet stream,
+  network inet6 stream,
+
+  # Allow logging
+  /var/log/** rw,
+}

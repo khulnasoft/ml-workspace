@@ -3,7 +3,6 @@ import os
 
 from jupyter_core.paths import jupyter_config_dir
 from notebook.nbextensions import install_nbextension
-from notebook.services.config import ConfigManager
 from setuptools import setup
 from setuptools.command.install import install
 
@@ -19,10 +18,6 @@ EXT_DIR = os.path.join(os.path.dirname(__file__), EXTENSION_NAME)
 
 class InstallCommand(install):
     def run(self):
-        open_tools_widget_path = EXTENSION_NAME + "/" + OPEN_TOOLS_WIDGET
-        git_tree_widget_path = EXTENSION_NAME + "/" + GIT_TREE_WIDGET
-        git_notebook_widget_path = EXTENSION_NAME + "/" + GIT_NOTEBOOK_WIDGET
-
         # Install Python package
         install.run(self)
 

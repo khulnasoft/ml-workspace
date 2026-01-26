@@ -53,7 +53,7 @@ def _tensorboard_magic(line):
     display(HTML(html))
 
 
-def load_ipython_extension(ipython):
+def load_ipython_extension(_ipython):
     """Deprecated: use `%load_ext tensorboard` instead.
 
     Raises:
