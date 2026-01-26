@@ -817,9 +817,7 @@ def set_user_email(email: str, repo=None):
     if repo:
         repo.config_writer().set_value("user", "email", email).release()
     else:
-        exit_code = subprocess.call(
-            'git config --global user.email "' + email + '"', shell=True
-        )
+        exit_code = subprocess.call(["git", "config", "--global", "user.email", email])
         if exit_code > 0:
             warnings.warn("Global email configuration failed.", stacklevel=2)
 
