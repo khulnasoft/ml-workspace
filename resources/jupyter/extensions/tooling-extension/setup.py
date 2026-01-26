@@ -76,5 +76,5 @@ setup(
     packages=[EXTENSION_NAME],
     include_package_data=True,
     cmdclass={"install": InstallCommand},
-    install_requires=["GitPython"],
+    install_requires=["GitPython~=3.1"],
 )

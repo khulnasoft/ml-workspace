@@ -28,6 +28,7 @@ def get_base_image(version: str, release: bool) -> str:
     Constructs the Docker base image reference for the given version.
     
     Parameters:
+        version (str): Version tag to append to the image name.
         release (bool): If True, prefix the image name with the remote repository prefix.
     
     Returns:
@@ -44,6 +45,8 @@ def get_build_args(flavor: str, version: str, vcs_ref: str, build_date: str) -> 
     Construct a Docker build-arg string for building the workspace image.
     
     Parameters:
+        flavor (str): Workspace flavor to set as ARG_WORKSPACE_FLAVOR.
+        version (str): Workspace version to set as ARG_WORKSPACE_VERSION.
         vcs_ref (str): VCS reference (e.g., short commit SHA) to embed as ARG_VCS_REF.
         build_date (str): Build timestamp (ISO 8601) to embed as ARG_BUILD_DATE.
     
