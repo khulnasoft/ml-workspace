@@ -4,16 +4,16 @@
 Configure and run custom scripts
 """
 
-from subprocess import call
+# Enable logging
+import logging
 import os
 import sys
 
-# Enable logging
-import logging
 logging.basicConfig(
-    format='%(asctime)s [%(levelname)s] %(message)s', 
-    level=logging.INFO, 
-    stream=sys.stdout)
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    level=logging.INFO,
+    stream=sys.stdout,
+)
 
 log = logging.getLogger(__name__)
 

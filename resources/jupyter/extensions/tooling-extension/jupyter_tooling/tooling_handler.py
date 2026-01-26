@@ -1,3 +1,4 @@
+import contextlib
 import glob
 import json
 import os
@@ -125,7 +126,7 @@ class ToolingHandler(IPythonHandler):
             workspace_tools = []
 
             def tool_is_duplicated(tool_array, tool):
-                """ Tools with same ID should only be added once to the list"""
+                """Tools with same ID should only be added once to the list"""
                 for t in tool_array:
                     if "id" in t and "id" in tool and tool["id"] == t["id"]:
                         return True
@@ -211,7 +212,6 @@ class GitInfoHandler(IPythonHandler):
 
     @web.authenticated
     def post(self):
-
         path = _resolve_path(self.get_argument("path", None))
         data = self.get_json_body()
 
@@ -423,28 +423,31 @@ class StorageCheckHandler(IPythonHandler):
 
             result = {
                 "workspaceFolderSizeWarning": False,
-                "containerSizeWarning": False
+                "containerSizeWarning": False,
             }
 
             if not MAX_WORKSPACE_FOLDER_SIZE and not MAX_CONTAINER_SIZE:
                 self.finish(json.dumps(result))
                 return
-            
+
             minutes_since_update = get_minutes_since_size_update()
-            if minutes_since_update is not None and minutes_since_update < CHECK_INTERVAL_MINUTES:
+            if (
+                minutes_since_update is not None
+                and minutes_since_update < CHECK_INTERVAL_MINUTES
+            ):
                 # only run check every 5 minutes
                 self.finish(json.dumps(result))
                 return
-            
+
             # Only run update every two minutes
             # run update in background -> somtimes it might need to much time to run
-            
+
             thread = threading.Thread(target=update_workspace_metadata)
             thread.daemon = True
             thread.start()
 
             container_size_in_gb = get_container_size()
-            
+
             if MAX_CONTAINER_SIZE:
                 if container_size_in_gb > MAX_CONTAINER_SIZE:
                     # Wait for metadata update before showing the warning
@@ -462,7 +465,7 @@ class StorageCheckHandler(IPythonHandler):
                     )
                 else:
                     result["containerSizeWarning"] = False
-            
+
             workspace_folder_size_in_gb = get_workspace_folder_size()
 
             if MAX_WORKSPACE_FOLDER_SIZE:
@@ -482,7 +485,7 @@ class StorageCheckHandler(IPythonHandler):
                     )
                 else:
                     result["workspaceFolderSizeWarning"] = False
-            
+
             self.finish(json.dumps(result))
 
         except Exception as ex:
@@ -500,26 +503,20 @@ def get_last_usage_date(path):
         log.info("Path does not exist: " + path)
         return date
 
-    try:
+    with contextlib.suppress(Exception):
         date = datetime.fromtimestamp(os.path.getmtime(path))
-    except Exception:
-        pass
 
-    try:
+    with contextlib.suppress(Exception):
         compare_date = datetime.fromtimestamp(os.path.getatime(path))
         if date.date() < compare_date.date():
             # compare date is newer
             date = compare_date
-    except Exception:
-        pass
 
-    try:
+    with contextlib.suppress(Exception):
         compare_date = datetime.fromtimestamp(os.path.getctime(path))
         if date.date() < compare_date.date():
             # compare date is newer
             date = compare_date
-    except Exception:
-        pass
 
     return date
 
@@ -528,29 +525,29 @@ def update_workspace_metadata():
     workspace_metadata = {
         "update_timestamp": str(datetime.now()),
         "container_size_in_kb": None,
-        "workspace_folder_size_in_kb": None
+        "workspace_folder_size_in_kb": None,
     }
 
     if MAX_CONTAINER_SIZE:
         # calculate container size via the root folder
-        try:
+        with contextlib.suppress(Exception):
             # exclude all different filesystems/mounts
             workspace_metadata["container_size_in_kb"] = int(
-                subprocess.check_output(["du", "-sx", "--exclude=/proc", "/"]).split()[0].decode("utf-8")
+                subprocess.check_output(["du", "-sx", "--exclude=/proc", "/"])
+                .split()[0]
+                .decode("utf-8")
             )
-        except Exception:
-            pass
-    
+
     if MAX_WORKSPACE_FOLDER_SIZE:
         # calculate workspace folder size
-        try:
+        with contextlib.suppress(Exception):
             # exclude all different filesystems/mounts
             workspace_metadata["workspace_folder_size_in_kb"] = int(
-                subprocess.check_output(["du", "-sx", WORKSPACE_HOME]).split()[0].decode("utf-8")
+                subprocess.check_output(["du", "-sx", WORKSPACE_HOME])
+                .split()[0]
+                .decode("utf-8")
             )
-        except Exception:
-            pass
-    
+
     if not os.path.exists(WORKSPACE_CONFIG_FOLDER):
         os.makedirs(WORKSPACE_CONFIG_FOLDER)
 
@@ -599,10 +596,11 @@ def get_minutes_since_size_update():
                 updated_date = datetime.strptime(
                     update_timestamp_str, "%Y-%m-%d %H:%M:%S.%f"
                 )
-                return ((datetime.now() - updated_date).seconds//60)%60
-        except Exception as ex:
+                return ((datetime.now() - updated_date).seconds // 60) % 60
+        except Exception:
             return None
     return None
+
 
 def get_inactive_days():
     # read inactive days from metadata timestamp (update when user is actively using the workspace)
@@ -722,6 +720,7 @@ def cleanup_folder(
         + " MB."
     )
 
+
 # ------------- GIT FUNCTIONS ------------------------
 
 
@@ -747,18 +746,16 @@ def set_user_email(email: str, repo=None):
             'git config --global user.email "' + email + '"', shell=True
         )
         if exit_code > 0:
-            warnings.warn("Global email configuration failed.")
+            warnings.warn("Global email configuration failed.", stacklevel=2)
 
 
 def set_user_name(name: str, repo=None):
     if repo:
         repo.config_writer().set_value("user", "name", name).release()
     else:
-        exit_code = subprocess.call(
-            ["git", "config", "--global", "user.name", name]
-        )
+        exit_code = subprocess.call(["git", "config", "--global", "user.name", name])
         if exit_code > 0:
-            warnings.warn("Global name configuration failed.")
+            warnings.warn("Global name configuration failed.", stacklevel=2)
 
 
 def commit_file(file_path: str, commit_msg: str = None, push: bool = True):
@@ -788,8 +785,8 @@ def commit_file(file_path: str, commit_msg: str = None, push: bool = True):
     try:
         # fetch and merge newest state - fast-forward-only
         repo.git.pull("--ff-only")
-    except Exception:
-        raise Exception("The repo is not up-to-date or cannot be updated.")
+    except Exception as ex:
+        raise Exception("The repo is not up-to-date or cannot be updated.") from ex
 
     try:
         # Commit single file with commit message
@@ -800,7 +797,7 @@ def commit_file(file_path: str, commit_msg: str = None, push: bool = True):
             or "branch is up to date with" in error.stdout
         ):
             # TODO better way to check if file has changed, e.g. has_file_changed
-            raise Exception("File has not been changed: " + file_path)
+            raise Exception("File has not been changed: " + file_path) from None
         else:
             raise error
 
@@ -815,7 +812,7 @@ def commit_file(file_path: str, commit_msg: str = None, push: bool = True):
             ):
                 raise Exception(
                     "User is not authenticated. Please use Ungit to login via HTTPS or use SSH authentication."
-                )
+                ) from error
             else:
                 raise error
 
@@ -973,7 +970,6 @@ def generate_token(base_url: str):
 
 
 def get_setup_script(hostname: str = None, port: str = None):
-
     private_ssh_key_path = HOME + "/.ssh/id_ed25519"
     with open(private_ssh_key_path, "r") as f:
         runtime_private_key = f.read()
@@ -984,7 +980,7 @@ def get_setup_script(hostname: str = None, port: str = None):
         client_command = file.read()
 
     SSH_JUMPHOST_TARGET = os.environ.get("SSH_JUMPHOST_TARGET", "")
-    is_runtime_manager_existing = False if SSH_JUMPHOST_TARGET == "" else True
+    is_runtime_manager_existing = bool(SSH_JUMPHOST_TARGET)
 
     RUNTIME_CONFIG_NAME = "workspace-"
     if is_runtime_manager_existing:
@@ -1029,7 +1025,7 @@ def get_setup_script(hostname: str = None, port: str = None):
         .replace("{RUNTIME_CONFIG_NAME}", RUNTIME_CONFIG_NAME)
         .replace(
             "{RUNTIME_KEYSCAN_NAME}",
-            local_keyscan_replacement.replace("[", "\[").replace("]", "\]"),
+            local_keyscan_replacement.replace("[", r"\[").replace("]", r"\]"),
         )
     )
 

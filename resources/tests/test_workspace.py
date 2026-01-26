@@ -26,7 +26,11 @@ def ssh_connection() -> str:
     assert result.status_code == 200
     assert "/bin/bash" in result.text
 
-    ssh_script_runner_regex = rf'^\/bin\/bash <\(curl -s --insecure "(http:\/\/{workspace_host}:{workspace_port}\/shared\/ssh\/setup\?token=[a-z0-9]+&host={workspace_host}&port={workspace_port})"\)$'
+    ssh_script_runner_regex = (
+        rf'^\/bin\/bash <\(curl -s --insecure "(http:\/\/{workspace_host}:'
+        rf"{workspace_port}\/shared\/ssh\/setup\?token=[a-z0-9]+&"
+        rf'host={workspace_host}&port={workspace_port})"\)$'
+    )
     pattern = re.compile(ssh_script_runner_regex)
     match = pattern.match(result.text)
     assert match is not None
@@ -77,7 +81,6 @@ class TestTooling:
         assert "Microsoft Corporation" in result.text
 
     def test_ssh(self, ssh_connection: str):
-
         completed_process = run(
             f"ssh {ssh_connection} 'echo {ssh_connection}'",
             shell=True,
