@@ -35,14 +35,14 @@ jobs:
       - name: set-host-ip
         run: echo "_HOST_IP=$(hostname -I | cut -d ' ' -f 1)" >> $GITHUB_ENV
       - name: create-release-branch
-        if: secrets.GITHUB_TOKEN != ''
+        if: github.token != ''
         uses: peterjgrainger/action-create-branch@v2.4.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           branch: "${{ env.BRANCH_PREFIX }}${{ env.VERSION }}"
       - name: checkout-release-branch
-        if: secrets.GITHUB_TOKEN != ''
+        if: github.token != ''
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -78,7 +78,7 @@ jobs:
           container_registry_username: ${{ secrets.CONTAINER_REGISTRY_USERNAME }}
           container_registry_password: ${{ secrets.CONTAINER_REGISTRY_PASSWORD }}
       - name: push-changes
-        if: secrets.GITHUB_TOKEN != ''
+        if: github.token != ''
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           branch: ${{ env.BRANCH_PREFIX }}${{ env.VERSION }}
@@ -89,7 +89,7 @@ jobs:
           skip_dirty_check: true
           commit_options: "--allow-empty"
       - name: create-pull-request
-        if: secrets.GITHUB_TOKEN != ''
+        if: github.token != ''
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -98,7 +98,7 @@ jobs:
             --body "Automated pull request for release version ${{ env.VERSION }}" \
             --label "skip changelog" || true
       - name: create-release-draft
-        if: secrets.GITHUB_TOKEN != ''
+        if: github.token != ''
         uses: release-drafter/release-drafter@v6
         with:
           version: ${{ env.VERSION }}
