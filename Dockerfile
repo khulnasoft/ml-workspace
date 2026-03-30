@@ -431,7 +431,7 @@ RUN \
     apt-get install -y --no-install-recommends xfce4-terminal && \
     apt-get install -y --no-install-recommends xfce4-clipman && \
     apt-get install -y --no-install-recommends xterm && \
-    apt-get install -y --no-install-recommends --allow-unauthenticated xfce4-taskmanager  && \
+    apt-get install -y --no-install-recommends xfce4-taskmanager  && \
     # Install dependencies to enable vncserver
     apt-get install -y --no-install-recommends xauth xinit dbus-x11 && \
     # Install gdebi deb installer
