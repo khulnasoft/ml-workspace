@@ -5,7 +5,7 @@
 Cython==0.29.23 # The Cython compiler for writing C extensions for the Python language.
 tqdm==4.61.1 # Fast, Extensible Progress Meter
 matplotlib==3.4.2 # Python plotting package
-requests==2.32.4 # Python HTTP for Humans.
+requests==2.33.0 # Python HTTP for Humans.
 urllib3==2.5.0 # HTTP library with thread-safe connection pooling, file post, and more.
 # requests can't use idna >3 yet
 idna==3.7 # Internationalized Domain Names in Applications (IDNA)
