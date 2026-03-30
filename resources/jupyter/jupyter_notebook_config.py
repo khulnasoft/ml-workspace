@@ -1,10 +1,7 @@
-import errno
+import contextlib
 import os
-import stat
-import subprocess
 
 import psutil
-from jupyter_core.paths import jupyter_data_dir
 
 c = get_config()
 # https://jupyter-notebook.readthedocs.io/en/stable/config.html
@@ -20,7 +17,7 @@ c.NotebookApp.iopub_data_rate_limit = 2147483647
 c.NotebookApp.port_retries = 0
 c.NotebookApp.quit_button = False
 c.NotebookApp.allow_remote_access = True
-c.NotebookApp.disable_check_xsrf = True
+c.NotebookApp.disable_check_xsrf = False
 c.NotebookApp.allow_origin = "*"
 c.NotebookApp.trust_xheaders = True
 c.MappingKernelManager.buffer_offline_messages = True
@@ -43,11 +40,9 @@ c.IPKernelApp.matplotlib = "inline"
 shutdown_inactive_kernels = os.getenv("SHUTDOWN_INACTIVE_KERNELS", "false")
 if shutdown_inactive_kernels and shutdown_inactive_kernels.lower().strip() != "false":
     cull_timeout = 172800  # default is 48 hours
-    try:
+    with contextlib.suppress(ValueError):
         # see if env variable is set as timout integer
         cull_timeout = int(shutdown_inactive_kernels)
-    except ValueError:
-        pass
 
     if cull_timeout > 0:
         print(

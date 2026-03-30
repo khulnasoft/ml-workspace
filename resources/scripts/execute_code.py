@@ -5,6 +5,7 @@ Execute code
 """
 
 # Enable logging
+import argparse
 import logging
 import os
 import subprocess
@@ -21,7 +22,6 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 # Parse arguments
-import argparse
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -43,8 +43,18 @@ start_time = time.time()
 
 log.info("Execute Code...")
 
+
 # Wrapper to print out command
 def call(command):
+    """
+    Execute a shell command after logging it.
+
+    Parameters:
+        command (str): Shell command to run.
+
+    Returns:
+        int: Exit status of the command; `0` indicates success, non-zero indicates failure.
+    """
     log.info("Executing: " + command)
     return subprocess.call(command, shell=True)
 
@@ -80,8 +90,15 @@ elif EXECUTE_CODE.lower().startswith(("git+", "svn+", "hg+", "bzr+")):
         import tempfile
 
         code_path = tempfile.mkdtemp()
+
         # automatically remove temp directory if process exits
         def cleanup():
+            """
+            Remove the temporary code_path directory and all its contents.
+
+            This performs a recursive deletion of the filesystem path referenced by the global
+            variable `code_path`.
+            """
             shutil.rmtree(code_path)
 
         atexit.register(cleanup)
@@ -92,7 +109,7 @@ elif EXECUTE_CODE.lower().startswith(("git+", "svn+", "hg+", "bzr+")):
         subdir = Link(vcs_url).subdirectory_fragment
         if subdir:
             code_path = os.path.join(code_path, subdir.lstrip("/"))
-    except Exception as ex:
+    except Exception:
         log.exception("Failed to clone repository via pip internal.")
 
 if not code_path or not os.path.exists(code_path):
@@ -166,8 +183,8 @@ if os.path.isdir(code_path):
         log.info("Execution failed with exit code: " + str(exit_code))
         if os.path.isdir(main_script):
             log.info(
-                "Please make sure that there is a main module (e.g. __main__.py) at this path: "
-                + main_script
+                "Please make sure that there is a main module (e.g. __main__.py) "
+                f"at this path: {main_script}"
             )
     else:
         log.info("Code execution finished successfully.")

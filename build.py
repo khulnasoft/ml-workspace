@@ -1,6 +1,9 @@
 import argparse
+import contextlib
 import datetime
+import os
 import subprocess
+from datetime import timezone
 
 import docker
 from ml_buildkit import build_utils
@@ -28,21 +31,27 @@ if not docker_image_prefix:
 
 flavor = str(args[FLAG_FLAVOR]).lower().strip()
 
-if flavor == "all":
-    flavors = ["minimal", "light", "full", "gpu"]
-else:
-    flavors = [flavor]
+flavors = ["minimal", "light", "full", "gpu"] if flavor == "all" else [flavor]
 
-for flavor in flavors:
-    build_utils.build(flavor + "-flavor", args)
+for flavor_to_build in flavors:
+    flavor_dir = flavor_to_build + "-flavor"
+    if os.path.exists(flavor_dir):
+        build_utils.build(flavor_dir, args)
+
+docker_image_name = COMPONENT_NAME
+if flavor in ["minimal", "light"]:
+    docker_image_name += "-" + flavor
 
 if args[build_utils.FLAG_MAKE]:
-    docker_image_name = COMPONENT_NAME
-    if flavor in ["minimal", "light"]:
-        docker_image_name += "-" + flavor
+    git_rev = "unknown"
+    with contextlib.suppress(Exception):
+        git_rev = (
+            subprocess.check_output(["git", "rev-parse", "--short", "HEAD"])
+            .decode("ascii")
+            .strip()
+        )
 
-    git_rev = build_utils.get_git_revision()
-    build_date = datetime.datetime.utcnow().isoformat("T") + "Z"
+    build_date = datetime.datetime.now(timezone.utc).isoformat("T") + "Z"
 
     build_args = (
         f" --build-arg ARG_VCS_REF={git_rev}"
@@ -61,7 +70,7 @@ if args[build_utils.FLAG_MAKE]:
 if args[build_utils.FLAG_TEST]:
     workspace_name = f"workspace-test-{flavor}"
     workspace_port = "8080"
-    client = docker.from_env()
+    client = docker.from_env(timeout=300)
     container = client.containers.run(
         f"{docker_image_name}:{VERSION}",
         name=workspace_name,
@@ -76,7 +85,8 @@ if args[build_utils.FLAG_TEST]:
     container_ip = container.attrs["NetworkSettings"]["Networks"]["bridge"]["IPAddress"]
 
     completed_process = build_utils.run(
-        f"docker exec --env WORKSPACE_IP={container_ip} {workspace_name} pytest '/resources/tests'",
+        f"docker exec --env WORKSPACE_IP={container_ip} {workspace_name} "
+        "pytest '/resources/tests'",
         exit_on_error=False,
     )
 

@@ -1,79 +1,90 @@
-# Makefile for local development with Act, Docker, and setup for dependencies
+# Makefile for local development and CI/CD operations
 
 # Define environment variables
 ACT ?= act
-DOCKER_IMAGE ?= ml-buildkit-image
+DOCKER_IMAGE ?= ml-workspace
 BUILD_ARGS ?= "--make"
 VERSION ?= "v1.0.0"
 GITHUB_TOKEN ?= $(shell echo $GITHUB_TOKEN)
-DEPENDENCY_INSTALL ?= true  # Flag to control dependency installation
+PYTHON ?= python3
+
+# Project paths
+BUILD_DIR := build
+RESOURCES_DIR := resources
+POLICIES_DIR := policies
+
+.PHONY: help build lint test check setup format clean sbom scan audit security-scan
 
 # Default target (help)
 help:
-	@echo "Makefile for local development with Act and Docker"
 	@echo "Available targets:"
-	@echo "  build                - Compile, assemble, and package all components"
-	@echo "  lint                 - Run linting and code style checks"
-	@echo "  test                 - Run unit and integration tests"
-	@echo "  check                - Run linting, style checks, and tests"
-	@echo "  release              - Release a new version and publish artifacts"
-	@echo "  release-local        - Release a new version locally"
-	@echo "  setup                - Setup the environment and install dependencies"
-	@echo "  install-deps         - Install dependencies within the container"
-	@echo "  push-docker          - Push Docker image to the registry"
+	@echo "  setup                - Install local development dependencies"
+	@echo "  format               - Format code using ruff"
+	@echo "  lint                 - Run linting checks using ruff"
+	@echo "  test                 - Run unit tests using pytest"
+	@echo "  build                - Build the Docker image"
+	@echo "  check                - Run lint, format check, and tests"
+	@echo "  sbom                 - Generate Software Bill of Materials (SBOM)"
+	@echo "  scan                 - Scan image for vulnerabilities using Trivy"
+	@echo "  audit                - Audit image config using OPA/Conftest"
+	@echo "  security-scan        - Run all security checks (SBOM, Scan, Audit)"
 	@echo "  clean                - Clean up build artifacts"
 
-# Build all components
-build: setup
-	$(ACT) -b -s BUILD_ARGS="--make" -j build
+# Setup environment
+setup:
+	@echo "Installing build requirements..."
+	$(PYTHON) -m pip install -r build_requirements.txt
 
-# Build a specific sub-component (example: docs)
-build-subcomponent: setup
-	$(ACT) -b -s BUILD_ARGS="--make" -s WORKING_DIRECTORY="./docs" -j build
+# Formatting and Linting
+format:
+	ruff format .
+	ruff check --fix .
 
-# Run linting and style checks
-lint: setup
-	$(ACT) -b -s BUILD_ARGS="--check" -j build
+lint:
+	ruff check .
+	ruff format --check .
 
-# Run integration and unit tests
-test: setup
-	$(ACT) -b -s BUILD_ARGS="--test" -j build
+# Testing (runs integration tests using build.py to manage container lifecycle)
+test:
+	$(PYTHON) build.py --flavor=minimal --test
 
-# Combine linting, building, and testing in one command
-check: setup
-	$(ACT) -b -s BUILD_ARGS="--check --make --test" -j build
+# Run pytest directly (requires a running workspace on localhost:8080)
+test-local:
+	pytest $(RESOURCES_DIR)/tests
 
-# Trigger a release process locally using Act
-release-local: setup
-	$(ACT) -b -s VERSION="$(VERSION)" -s GITHUB_TOKEN="$(GITHUB_TOKEN)" -j release
+# Build Docker image
+build:
+	$(PYTHON) build.py --flavor=minimal --make
 
-# Trigger a release pipeline from GitHub Actions (use the version as the argument)
-release:
-	$(ACT) -b -s VERSION="$(VERSION)" -s GITHUB_TOKEN="$(GITHUB_TOKEN)" -j release
+# Run all checks
+check: lint test
 
-# Clean up any previous builds or release artifacts
+# Security tools
+sbom:
+	@echo "Generating SBOM..."
+	@mkdir -p $(BUILD_DIR)
+	@docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v $(PWD)/$(BUILD_DIR):/out \
+		anchore/syft:latest $(DOCKER_IMAGE)-minimal:$(VERSION) -o json --file /out/sbom.json
+
+scan:
+	@echo "Scanning for vulnerabilities..."
+	@docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+		-v $${HOME}/.cache:/root/.cache \
+		aquasec/trivy:latest image --severity HIGH,CRITICAL $(DOCKER_IMAGE)-minimal:$(VERSION)
+
+audit:
+	@echo "Auditing image configuration..."
+	@mkdir -p $(BUILD_DIR)
+	@docker inspect $(DOCKER_IMAGE)-minimal:$(VERSION) > $(BUILD_DIR)/inspect.json
+	@docker run --rm -v $(PWD):/project -w /project openpolicyagent/conftest test $(BUILD_DIR)/inspect.json -p $(POLICIES_DIR)/
+
+security-scan: sbom scan audit
+
+# Cleaning
 clean:
 	@echo "Cleaning build artifacts..."
-	@rm -rf build/*
+	@rm -rf $(BUILD_DIR)
 
-# Ensure the environment is ready by building Docker image
-setup:
-	@echo "Setting up the environment for Docker and Act..."
-	@docker build -t $(DOCKER_IMAGE) .
-	@if [ "$(DEPENDENCY_INSTALL)" = "true" ]; then \
-		make install-deps; \
-	fi
-
-# Install dependencies within the container
-install-deps: setup
-	@echo "Installing dependencies..."
-	@docker run --rm -v $(PWD):/workspace $(DOCKER_IMAGE) make install
-
-# Push Docker image to DockerHub or other registry
-push-docker: setup
-	@echo "Pushing Docker image to the registry..."
-	@docker push $(DOCKER_IMAGE)
-
-# Example clean and release sequence
-release-clean: clean
-	make release-local
+# Legacy act support (optional)
+act-build:
+	$(ACT) -b -s BUILD_ARGS="--make" -j build
