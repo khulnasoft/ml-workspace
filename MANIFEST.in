@@ -1,0 +1,10 @@
+include README.md
+include LICENSE
+include requirements*.txt
+recursive-include resources *
+recursive-include deployment *
+recursive-include scripts *
+
+# Exclude build artifacts and cache
+global-exclude *.py[co] __pycache__
+global-exclude .DS_Store .git* .hg* .svn*

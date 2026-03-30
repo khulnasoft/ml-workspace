@@ -1,99 +1,93 @@
 #!/bin/bash
 
-# Stops script execution if a command has an error
+# --- Configuration & Setup ---
+
+# Exit immediately if a command exits with a non-zero status.
 set -e
-# Print command
+# Print commands and their arguments as they are executed.
 set -x
 
-# set default build args if not provided
-export DOCKNET_ENDPOINT=http://"$_HOST_IP":30010
-# set the root path because in the docknet container, nginx will handle the request
-export DOCKNET_ROOT_PATH="/api"
+# Set default build arguments if not already provided.
+# These variables seem to be related to a 'docknet' service.
+export DOCKNET_ENDPOINT="http://${_HOST_IP:-localhost}:30010" # Use a default for _HOST_IP if not set
+export DOCKNET_ROOT_PATH="/api" # Nginx will handle requests at this root path
 
-#if [[ $INPUT_BUILD_ARGS == *"--test"* ]]; then
-#    # Prepare the test landscape
-#    echo "Start kind cluster for test phase"
-#    export kind_cluster_name="docknet-testcluster"
-#    export KUBE_AVAILABLE="true"
-#    # Delete kind cluster in case it was not cleaned up last time (in case it does not exist, the command just does nothing):
-#    kind delete cluster --name $kind_cluster_name
-#    kind create cluster --config=/kind-config.yaml --name $kind_cluster_name
-#    sed -i -E 's/[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/'"$_HOST_IP"'/g' ~/.kube/config
-#    sed -i '6i\    insecure-skip-tls-verify: true' ~/.kube/config
-#    sed -i 's/certificate-authority-data/#certificate-authority-data/g' ~/.kube/config
-#    cat ~/.kube/config
-#    kube_config_volume="kube-config"
-#    docker run --rm -v $kube_config_volume:/kube-config --env KUBE_DATA_CONFIG="$(cat ~/.kube/config | base64)" ubuntu:20.04 /bin/bash -c 'touch /kube-config/config && echo "$KUBE_DATA_CONFIG" | base64 --decode >> /kube-config/config'
-#
-#    # Install the Calico Network Plugin for networking so that Network Policies have an effect (see this GitHub issue: https://github.com/kubernetes-sigs/kind/issues/842#issuecomment-554775260)
-#    kubectl apply -f https://docs.projectcalico.org/v3.8/manifests/calico.yaml
-#    kubectl -n kube-system set env daemonset/calico-node FELIX_IGNORELOOSERPF=true
-#
-#    # Check whether test-marker has the value integration (quotation marks are allowed)
-#    echo $INPUT_BUILD_ARGS
-#    echo "Docker compose up..."
-#    if [[ $INPUT_BUILD_ARGS =~ ^.*--test-marker[=|\ ][\'\"]?integration[\'\"]?([\ ].*$|$) ]]; then
-#        echo "In Docker compose up ..."
-#        # TODO: deploy Docknet as Kubernetes
-#        # TODO: do this in the integration test's setup phase instead of here!
-#        cd test_deployment && docker-compose up -d && cd ..
-#    fi
-#fi
+# Install Python build requirements.
+# Ensure GITHUB_WORKSPACE is correctly set in your CI environment.
+echo "Installing Python build requirements..."
+pip install -r "${GITHUB_WORKSPACE}/build_requirements.txt"
 
-# (while true; do
-#               df -h
-#               sleep 30
-#               done) & python -u build.py $INPUT_BUILD_ARGS $BUILD_SECRETS
+# --- Build Arguments & Authentication ---
 
-# Install build requirements
-pip install -r "$GITHUB_WORKSPACE/build_requirements.txt"
+echo "Preparing build arguments and authentication..."
 
+# Initialize BUILD_ARGS.
+BUILD_ARGS="${INPUT_BUILD_ARGS}"
 
-# Copy code from the original build-environment entrypoint
-# Disable immediate stop so that the cleanup phase can run even if entrypoint-sh fails
-set +e
-
-echo "Run build.py"
-# set default build args if not provided
-BUILD_ARGS="$INPUT_BUILD_ARGS"
-if [ -z "$BUILD_ARGS" ]; then
+# Set default build arguments if INPUT_BUILD_ARGS is empty.
+if [[ -z "${BUILD_ARGS}" ]]; then
     BUILD_ARGS="--check --make --test"
 fi
-if [ -n "$GITHUB_TOKEN" ]; then
-    echo "GitHub Token provided. Setting up GitHub URLs..."
-    # Use the github token to authenticate the git interaction (see this Stackoverflow answer: https://stackoverflow.com/a/57229018/5379273)
-    git config --global url."https://api:$GITHUB_TOKEN@github.com/".insteadOf "https://github.com/"
-    git config --global url."https://ssh:$GITHUB_TOKEN@github.com/".insteadOf "ssh://git@github.com/"
-    git config --global url."https://git:$GITHUB_TOKEN@github.com/".insteadOf "git@github.com:"
 
-    BUILD_ARGS="$BUILD_ARGS --github-token=$GITHUB_TOKEN"
+# Configure Git for GitHub authentication if a token is provided.
+if [[ -n "${GITHUB_TOKEN}" ]]; then
+    echo "GitHub Token provided. Configuring Git for authentication."
+    # Using 'insteadOf' is a robust way to handle authentication for Git operations.
+    git config --global url."https://api:${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
+    git config --global url."https://ssh:${GITHUB_TOKEN}@github.com/".insteadOf "ssh://git@github.com/"
+    git config --global url."https://git:${GITHUB_TOKEN}@github.com/".insteadOf "git@github.com:"
+    BUILD_ARGS+=" --github-token=${GITHUB_TOKEN}"
 fi
-if [ -n "$INPUT_CONTAINER_REGISTRY_USERNAME" ] && [ -n "$INPUT_CONTAINER_REGISTRY_PASSWORD" ]; then
-    echo "Container registry credentials provided. Logging in to registry..."
-    docker login $INPUT_CONTAINER_REGISTRY_URL -u "$INPUT_CONTAINER_REGISTRY_USERNAME" -p "$INPUT_CONTAINER_REGISTRY_PASSWORD"
 
-    if [ -n "$INPUT_CONTAINER_REGISTRY_URL" ]; then
-        BUILD_ARGS="$BUILD_ARGS --container-registry-url=$INPUT_CONTAINER_REGISTRY_URL"
+# Log in to the container registry if credentials are provided.
+if [[ -n "${INPUT_CONTAINER_REGISTRY_USERNAME}" && -n "${INPUT_CONTAINER_REGISTRY_PASSWORD}" ]]; then
+    echo "Container registry credentials provided. Logging in to registry."
+    # Use default for URL if not provided, though it's better for it to be explicitly set.
+    docker login "${INPUT_CONTAINER_REGISTRY_URL:-}" -u "${INPUT_CONTAINER_REGISTRY_USERNAME}" -p "${INPUT_CONTAINER_REGISTRY_PASSWORD}"
+
+    # Append registry details to BUILD_ARGS.
+    # It's good practice to ensure these are always passed if credentials are present.
+    BUILD_ARGS+=" --container-registry-username=${INPUT_CONTAINER_REGISTRY_USERNAME}"
+    BUILD_ARGS+=" --container-registry-password=${INPUT_CONTAINER_REGISTRY_PASSWORD}"
+    if [[ -n "${INPUT_CONTAINER_REGISTRY_URL}" ]]; then
+        BUILD_ARGS+=" --container-registry-url=${INPUT_CONTAINER_REGISTRY_URL}"
     fi
-
-    BUILD_ARGS="$BUILD_ARGS --container-registry-username=$INPUT_CONTAINER_REGISTRY_USERNAME"
-    BUILD_ARGS="$BUILD_ARGS --container-registry-password=$INPUT_CONTAINER_REGISTRY_PASSWORD"
 fi
-# Navigate to working directory, if provided
-if [ -n "$INPUT_WORKING_DIRECTORY" ]; then
-    cd "$INPUT_WORKING_DIRECTORY"
+
+# --- Execution ---
+
+echo "Navigating to working directory and running build.py..."
+
+# Navigate to the specified working directory or default to GITHUB_WORKSPACE.
+if [[ -n "${INPUT_WORKING_DIRECTORY}" ]]; then
+    cd "${INPUT_WORKING_DIRECTORY}"
 else
-    cd "$GITHUB_WORKSPACE"
+    cd "${GITHUB_WORKSPACE}"
 fi
-python -u build.py $BUILD_ARGS
-exit_code=$?
 
-echo "Cleanup Phase"
-#if [[ $INPUT_BUILD_ARGS == *"--test"* ]]; then
-#    # || true => don't make the cleanup fail the pipeline
-#    kind delete cluster --name $kind_cluster_name || true
-#    docker volume rm $kube_config_volume || true
-#    cd test_deployment && docker-compose down && cd ..
-#fi
+# Run the build script.
+# Disable 'set -e' temporarily to ensure cleanup runs even if build.py fails.
+set +e
+python -u build.py ${BUILD_ARGS}
+EXIT_CODE=$?
+set -e # Re-enable 'set -e'
 
-exit $exit_code
+# --- Cleanup ---
+
+echo "Starting cleanup phase..."
+
+# The commented-out 'kind' cluster and docker-compose cleanup suggests these are conditional
+# on a '--test' argument. If you re-enable them, make sure the conditions are robust.
+# Example of how you might re-enable with clear conditions:
+# if [[ "${INPUT_BUILD_ARGS}" == *"--test"* ]]; then
+#    echo "Cleaning up test environment (kind cluster, docker-compose)..."
+#    # The '|| true' ensures cleanup steps don't fail the entire pipeline
+#    kind delete cluster --name "${kind_cluster_name}" || true
+#    docker volume rm "${kube_config_volume}" || true
+#    if [[ -d "test_deployment" ]]; then
+#        (cd test_deployment && docker-compose down) || true
+#    fi
+# fi
+
+# Exit with the exit code from build.py.
+exit ${EXIT_CODE}

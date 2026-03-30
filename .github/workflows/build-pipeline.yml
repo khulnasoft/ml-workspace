@@ -1,37 +1,134 @@
-# Based on https://github.com/khulnasoft/ml-buildkit/blob/v0.6.6/workflows/build-pipeline.yml
-name: build-pipeline
+name: Build Pipeline
 
 on:
+  # Allows manual triggering of the workflow with specified inputs.
   workflow_dispatch:
     inputs:
       build_args:
-        description: "Arguments passed to build script"
+        description: "Arguments passed to the build script (e.g., --make --force)"
         required: false
-        default: "--make --force"
+        default: "--make --force" # Sensible default for a typical build
       working_directory:
         description: "Working directory from where the build command is run"
         required: false
-        default: "."
+        default: "." # Defaults to the repository root
+      # Optional: Add an input to control caching behavior if needed
+      # use_cache:
+      #   description: "Set to 'true' to enable caching for dependencies"
+      #   required: false
+      #   default: "true"
+
+  # Triggers the workflow on pushes to the 'main' branch.
   push:
     branches:
       - main
 
+# Define environment variables available to all jobs in this workflow.
 env:
-  BUILD_ARGS: ${{ github.event.inputs?.build_args || secrets.BUILD_ARGS }}
-  WORKING_DIRECTORY: ${{ github.event.inputs?.working_directory || secrets.WORKING_DIRECTORY }}
-  ACTIONS_ALLOW_UNSECURE_COMMANDS: true # TODO: only needed until act supports the new way
+  BUILD_SCRIPT_ARGS: ${{ github.event.inputs.build_args || '--make --force' }}
+  BUILD_WORKING_DIRECTORY: ${{ github.event.inputs.working_directory || '.' }}
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CACHE_HIT: false
+
     steps:
-      - name: set-host-ip
-        run: echo "::set-env name=_HOST_IP::$(hostname -I | cut -d ' ' -f 1)"
-      - uses: actions/checkout@v2
-      - name: run-build-scripts
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Comprehensive caching strategy for improved performance
+      - name: Cache Python dependencies
+        id: cache-pip
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pip
+            ~/.cache/pipx
+          key: ${{ runner.os }}-python-${{ hashFiles('**/requirements*.txt', '**/pyproject.toml', '**/setup.py') }}
+          restore-keys: |
+            ${{ runner.os }}-python-
+
+      - name: Cache Node.js dependencies
+        id: cache-node
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.npm
+            ~/.cache/yarn
+            node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json', '**/yarn.lock', '**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Cache Docker layers
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ hashFiles('Dockerfile*') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-${{ hashFiles('Dockerfile*') }}-
+            ${{ runner.os }}-buildx-
+
+      - name: Cache Conda packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/conda_pkgs_dir
+            ~/.conda
+          key: ${{ runner.os }}-conda-${{ hashFiles('**/environment.yml', '**/conda-requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-conda-
+
+      # Set up Docker Buildx for multi-platform builds
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Cache detection for conditional execution
+      - name: Check cache status
+        run: |
+          echo "Python cache hit: ${{ steps.cache-pip.outputs.cache-hit }}"
+          echo "Node cache hit: ${{ steps.cache-node.outputs.cache-hit }}"
+          if [[ "${{ steps.cache-pip.outputs.cache-hit }}" == "true" ]]; then
+            echo "CACHE_HIT=true" >> $GITHUB_ENV
+          fi
+
+      # Run build using custom action with improved caching
+      - name: Run Build Scripts
         uses: ./.github/actions/build-environment
         with:
-          build_args: ${{ env.BUILD_ARGS }}
-          working_directory: ${{ env.WORKING_DIRECTORY }}
+          build_args: ${{ env.BUILD_SCRIPT_ARGS }}
+          working_directory: ${{ env.BUILD_WORKING_DIRECTORY }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BUILDX_CACHE_FROM: type=local,src=/tmp/.buildx-cache
+          BUILDX_CACHE_TO: type=local,dest=/tmp/.buildx-cache-new,mode=max
+
+      # Move Docker cache to avoid cache corruption
+      - name: Move Docker cache
+        if: always()
+        run: |
+          if [ -d "/tmp/.buildx-cache-new" ]; then
+            rm -rf /tmp/.buildx-cache
+            mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+          fi
+
+      # Upload build artifacts
+      - name: Upload build artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs-${{ github.run_id }}
+          path: |
+            build/logs/
+            *.log
+          retention-days: 7
+
+      # Post-build cleanup
+      - name: Cleanup temporary files
+        if: always()
+        run: |
+          docker system prune -f || true
+          rm -rf /tmp/build-* || true
