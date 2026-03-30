@@ -93,9 +93,7 @@ except Exception:
 # PREPARE SSL SERVING
 ENV_NAME_SERVICE_SSL_ENABLED = "WORKSPACE_SSL_ENABLED"
 if ENV_NAME_SERVICE_SSL_ENABLED in os.environ and (
-    os.environ[ENV_NAME_SERVICE_SSL_ENABLED] is True
-    or os.environ[ENV_NAME_SERVICE_SSL_ENABLED] == "true"
-    or os.environ[ENV_NAME_SERVICE_SSL_ENABLED] == "on"
+    os.environ[ENV_NAME_SERVICE_SSL_ENABLED].lower() in ("true", "on", "1")
 ):
     ENV_SSL_RESOURCES_PATH = os.getenv("SSL_RESOURCES_PATH", "/resources/ssl")
 
