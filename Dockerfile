@@ -40,33 +40,49 @@ COPY resources/scripts/clean-layer.sh /usr/bin/
 COPY resources/scripts/fix-permissions.sh /usr/bin/
 RUN chmod +x /usr/bin/clean-layer.sh /usr/bin/fix-permissions.sh
 
-# Install locales in a single RUN command.
+# Install locales in a single RUN command with version pinning
 # Use apt-get clean and rm -rf /var/lib/apt/lists/* immediately after apt-get install.
 RUN apt-get update && \
-    apt-get install -y locales && \
+    apt-get install -y --no-install-recommends \
+    locales=2.35-0ubuntu3.1 && \
     sed -i -e 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen && \
     locale-gen && \
-    # No need for dpkg-reconfigure with DEBIAN_FRONTEND="noninteractive"
     update-locale LANG=en_US.UTF-8 && \
     clean-layer.sh
 
-# Add tini - use a specific, recent version.
-# Current Tini LTS is 0.19.0, but newer stable versions are available. Let's use 0.19.0 as in original.
-RUN wget --no-verbose https://github.com/krallin/tini/releases/download/v0.19.0/tini -O /tini && \
-    chmod +x /tini
+# Add tini - pinned to specific version for reproducibility
+ENV TINI_VERSION=v0.19.0
+RUN set -eux; \
+    wget --no-verbose "https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini" -O /tini; \
+    wget --no-verbose "https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini.asc" -O /tini.asc; \
+    # Verify checksum for security
+    echo "93dcc18adc78c65a028a84799ecf8ad40c936fdfc5f2a57b1acda5a8117fa82c /tini" | sha256sum -c -; \
+    chmod +x /tini; \
+    rm -f /tini.asc
 
 ---
 ### SYSTEM-WIDE PACKAGES ###
 
-# Install basic packages. Group related packages and use --no-install-recommends.
-# Consolidate apt-get update calls.
-# `apt-get upgrade -y` is generally discouraged in Dockerfiles as it can lead to
-# non-reproducible builds. Pinning versions or adding specific upgrades is better.
-# For simplicity, removed `apt-get upgrade -y` here.
+# Install essential build tools and utilities with version pinning
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-    sudo apt-utils apt-transport-https gnupg-agent gpg-agent gnupg2 ca-certificates \
-    build-essential pkg-config software-properties-common lsof net-tools libcurl4 curl wget cron openssl iproute2 \
+    build-essential=12.9ubuntu3 \
+    curl=7.81.0-1ubuntu1.15 \
+    wget=1.21.2-2ubuntu1 \
+    git=1:2.34.1-1ubuntu1.10 \
+    vim=2:8.2.3995-1ubuntu2.13 \
+    htop=3.0.5-7build2 \
+    unzip=6.0-26ubuntu3.1 \
+    bzip2=1.0.8-5build1 \
+    ca-certificates=20230311ubuntu0.22.04.1 \
+    sudo=1.9.9-1ubuntu2.4 \
+    apt-transport-https=2.4.10 \
+    gnupg=2.2.27-3ubuntu2.1 \
+    software-properties-common=0.99.22.9 \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get install -y --no-install-recommends \
+    cron openssl iproute2 \
     psmisc tmux dpkg-sig uuid-dev csh xclip clinfo time libssl-dev libgdbm-dev libncurses5-dev libncursesw5-dev \
     libreadline-dev libedit-dev xz-utils gawk swig graphviz libgraphviz-dev screen nano locate sqlite3 xmlstarlet \
     parallel libspatialindex-dev yara libhiredis-dev libpq-dev libmysqlclient-dev libleptonica-dev libgeos-dev \
@@ -128,17 +144,14 @@ COPY resources/nginx/lua-extensions /etc/nginx/nginx_plugins
 ---
 ### RUNTIMES - CONDA & PYTHON ###
 
-# Use a more recent Miniconda version and Python.
-# Always refer to the official Miniconda release page for the latest installers and their MD5/SHA256 checksums.
-# As of current date, Miniconda3-py310_24.3.0-0-Linux-x86_64.sh is more typical.
-# Using fixed versions is critical for reproducibility.
+# Pinned versions for reproducibility (updated July 2025)
 ENV \
     CONDA_DIR="/opt/conda" \
     CONDA_ROOT="/opt/conda" \
-    PYTHON_VERSION="3.10.13" \
-    MINICONDA_VERSION="24.3.0-0" \
-    MINICONDA_SHA256="4e892c2196bc5d58f000b0dd38e07248010626359bc2985175d045c711765c92" \
-    CONDA_VERSION="24.3.0" \
+    PYTHON_VERSION="3.11.9" \
+    MINICONDA_VERSION="24.5.0-0" \
+    MINICONDA_SHA256="e5e5e89cdcef9332fe632cd25d318cf71f681eef029a24495c713b18e66a8018" \
+    CONDA_VERSION="24.5.0" \
     PATH="${CONDA_ROOT}/bin:${PATH}" \
     LD_LIBRARY_PATH="${CONDA_ROOT}/lib"
 
@@ -192,9 +205,10 @@ RUN pip install pipx && \
     clean-layer.sh
 ENV PATH="${HOME}/.local/bin:${PATH}"
 
-# Install Node.js - using NodeSource's recommended setup for LTS.
-# Node 14.x is quite old. Node 20.x (LTS) or 22.x (current) are better.
-ENV NODE_VERSION="20.x" # Or "22.x" for latest stable
+# Install Node.js - pinned to specific LTS version
+ENV NODE_VERSION="22.4.1" \
+    NPM_VERSION="10.8.1" \
+    YARN_VERSION="4.3.1"
 RUN apt-get update && \
     curl -sL "https://deb.nodesource.com/setup_${NODE_VERSION}" | bash - && \
     apt-get install -y nodejs && \

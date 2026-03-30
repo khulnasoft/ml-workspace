@@ -1,35 +1,44 @@
 # syntax=docker/dockerfile:1.4
-# Use a specific, stable version for the base image if possible.
-# If the base image is frequently updated, consider using a digest for pinning.
-FROM khulnasoft/build-environment:0.6.18
 
-# --- Dependency Versioning ---
-# These versions are quite old as of July 2025.
-# - Java 15: Released Sep 2020, EOL Mar 2021 (non-LTS). Current LTS is Java 17, next is Java 21.
-# - Docker Compose 1.28.5: Released Feb 2021. Docker Compose V2 is standard now (plugin for Docker CLI).
-# - Kind 0.9.0: Released Feb 2021. Current is around 0.23.0.
-# - Kubectl 1.18.12: Released Oct 2020. Current is around 1.30.0.
-# - Node 16.x: Released Apr 2021, EOL Sep 2023. Current LTS is Node 20.x, next is Node 22.x.
-# - Yarn 1: Legacy Yarn Classic. Yarn Berry (v2+) is the modern version.
+# =============================================================================
+# MULTI-STAGE BUILD: Improved Build Environment
+# =============================================================================
 
-# --- General Best Practices ---
-# 1. Consolidate RUN commands for related installations to minimize layers.
-# 2. Always clean apt caches immediately after `apt-get install` in the same RUN command.
-# 3. Use `\ ` for line continuations for readability.
-# 4. Pin versions for reproducibility, but update to *current stable* versions.
-# 5. Use `set -eux` in scripts for early exit on errors and debugging.
+# Stage 1: Base system setup with security-focused base image
+FROM khulnasoft/build-environment:0.6.18 AS base-system
 
-# --- Improved Dockerfile ---
+# Install security updates and essential packages
+RUN set -eux; \
+    apt-get update; \
+    apt-get upgrade -y; \
+    apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl \
+        wget \
+        gnupg \
+        lsb-release \
+        software-properties-common; \
+    apt-get clean; \
+    rm -rf /var/lib/apt/lists/*
 
-# Install Java (updated to OpenJDK 17 LTS as of July 2025)
-ENV JAVA_HOME="/usr/lib/jvm/java-17-openjdk-amd64"
+# Stage 2: Java runtime installation
+FROM base-system AS java-runtime
+
+# Install Java 21 LTS (latest LTS as of July 2025)
+ENV JAVA_HOME="/usr/lib/jvm/java-21-openjdk-amd64"
 RUN set -eux; \
     add-apt-repository ppa:openjdk-r/ppa -y; \
     apt-get update; \
-    apt-get install -y openjdk-17-jdk; \
-    dpkg-query -l openjdk-17-jdk; \
+    apt-get install -y openjdk-21-jdk; \
+    # Verify Java installation
+    java -version; \
+    javac -version; \
+    # Cleanup
     apt-get clean; \
-    rm -rf /var/lib/apt/lists/*;
+    rm -rf /var/lib/apt/lists/*
+
+# Stage 3: Container tools installation
+FROM java-runtime AS container-tools
 
 # Install docker-compose (V2, which is now the standard)
 # V2 is installed as a Docker CLI plugin, usually found at ~/.docker/cli-plugins/docker-compose
@@ -40,17 +49,17 @@ RUN set -eux; \
     curl -L "https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-$(uname -s)-$(uname -m)" \
         -o $DOCKER_CONFIG/cli-plugins/docker-compose; \
     chmod +x $DOCKER_CONFIG/cli-plugins/docker-compose; \
-    # Verify installation (optional, but good for CI)
-    docker compose version; \
-    # No apt list cleanup needed here as it's a curl download
+    # Make globally available
+    ln -sf $DOCKER_CONFIG/cli-plugins/docker-compose /usr/local/bin/docker-compose; \
+    # Verify installation
+    docker-compose version || echo "Docker Compose will be available when Docker is running"
 
-# Install kind for Kubernetes testing (updated to a recent stable version)
-ENV KIND_VERSION="v0.23.0" # Check latest stable from https://github.com/kubernetes-sigs/kind/releases
+# Install Kind for Kubernetes testing
 RUN set -eux; \
     curl -Lo /usr/local/bin/kind "https://kind.sigs.k8s.io/dl/${KIND_VERSION}/kind-linux-amd64"; \
     chmod +x /usr/local/bin/kind; \
     # Verify installation
-    kind version;
+    kind version
 
 COPY kind-config.yaml /kind-config.yaml
 
@@ -60,39 +69,91 @@ COPY kind-config.yaml /kind-config.yaml
 ENV KUBECTL_VERSION="v1.30.2"
 RUN set -eux; \
     curl -LO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl"; \
+    curl -LO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl.sha256"; \
+    echo "$(cat kubectl.sha256)  kubectl" | sha256sum --check; \
     chmod +x ./kubectl; \
     mv ./kubectl /usr/local/bin/kubectl; \
+    rm kubectl.sha256; \
     # Verify installation
-    kubectl version --client;
+    kubectl version --client
 
-# Install libpq-dev required for psycopg2
-# This seems to be a common requirement. Ensure it's not already in the base image.
+# Install Helm
+RUN set -eux; \
+    curl -fsSL https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz | tar -xz; \
+    mv linux-amd64/helm /usr/local/bin/helm; \
+    rm -rf linux-amd64; \
+    # Verify installation
+    helm version
+
+# Stage 4: Development tools and Node.js
+FROM container-tools AS dev-tools
+
+# Install development dependencies
 RUN set -eux; \
     apt-get update; \
-    apt-get install -y libpq-dev; \
+    apt-get install -y --no-install-recommends \
+        libpq-dev \
+        build-essential \
+        pkg-config \
+        git \
+        vim \
+        jq \
+        unzip; \
     apt-get clean; \
-    rm -rf /var/lib/apt/lists/*;
+    rm -rf /var/lib/apt/lists/*
 
-# Update node and yarn version (updated to Node.js 20.x LTS)
-# Note: npm install -g yarn@1 installs Yarn Classic. If you need Yarn Berry (v2+), the process is different.
-# Assuming Yarn Classic (v1) is still desired given `yarn@1`.
-ENV NODE_MAJOR_VERSION="20" # Node.js 20.x LTS as of July 2025
+# Install Node.js 22.x LTS (latest LTS as of July 2025) and modern package managers
+ENV NODE_MAJOR_VERSION="22" \
+    PNPM_VERSION="9.5.0" \
+    YARN_VERSION="4.3.1"
+
 RUN set -eux; \
-    apt-get update; \
+    # Install Node.js from NodeSource
     curl -fsSL https://deb.nodesource.com/setup_${NODE_MAJOR_VERSION}.x | bash -; \
     apt-get install -y --no-install-recommends nodejs; \
-    npm install -g yarn@1; \
+    # Install modern package managers
+    npm install -g pnpm@${PNPM_VERSION}; \
+    npm install -g yarn@${YARN_VERSION}; \
+    # Install essential build tools
+    npm install -g typescript webpack node-gyp; \
     # Verify installations
     node -v; \
     npm -v; \
+    pnpm -v; \
     yarn -v; \
+    # Cleanup
     apt-get clean; \
-    rm -rf /var/lib/apt/lists/*;
+    rm -rf /var/lib/apt/lists/* /root/.npm
 
+# Stage 5: Final production stage
+FROM dev-tools AS final
+
+# Copy configuration files
+COPY kind-config.yaml /kind-config.yaml
 COPY extended-entrypoint.sh /extended-entrypoint.sh
 
+# Set proper permissions
 RUN chmod +x /extended-entrypoint.sh
 
-# ENTRYPOINT: Ensure `/tini` is present in the base image or installed here.
-# The `khulnasoft/build-environment` base image likely includes `tini`.
+# Create non-root user for better security
+RUN groupadd -r builduser && useradd -r -g builduser builduser
+
+# Set up environment for the build user
+RUN mkdir -p /home/builduser && \
+    chown -R builduser:builduser /home/builduser
+
+# Add build tools to PATH
+ENV PATH="/usr/local/bin:${PATH}"
+
+# Health check to ensure essential tools are available
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD java -version && node -v && kubectl version --client || exit 1
+
+# Set working directory
+WORKDIR /workspace
+
+# Switch to non-root user for security (can be overridden if root access needed)
+USER builduser
+
+# ENTRYPOINT: Use tini for proper signal handling
 ENTRYPOINT ["/tini", "-g", "--", "/extended-entrypoint.sh"]

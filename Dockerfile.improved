@@ -1,0 +1,291 @@
+# syntax=docker/dockerfile:1.4
+
+# =============================================================================
+# MULTI-STAGE BUILD: ML Space Application
+# =============================================================================
+
+# Stage 1: Base system with common dependencies
+FROM ubuntu:22.04 AS base-system
+
+LABEL maintainer="ML Space Team <team@mlspace.com>"
+LABEL version="2.0.0"
+LABEL description="ML Space - Machine Learning Development Environment"
+
+# Set environment variables for non-interactive installation
+ENV DEBIAN_FRONTEND=noninteractive \
+    LANG=en_US.UTF-8 \
+    LANGUAGE=en_US:en \
+    LC_ALL=en_US.UTF-8 \
+    TZ=UTC
+
+# Install base system packages and security updates
+RUN set -eux; \
+    apt-get update; \
+    apt-get upgrade -y; \
+    apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl \
+        wget \
+        gnupg \
+        lsb-release \
+        software-properties-common \
+        locales \
+        tzdata \
+        build-essential \
+        pkg-config \
+        git \
+        vim \
+        nano \
+        jq \
+        unzip \
+        zip; \
+    # Configure locales
+    echo "en_US.UTF-8 UTF-8" > /etc/locale.gen; \
+    locale-gen; \
+    update-locale LANG=en_US.UTF-8; \
+    # Configure timezone
+    ln -fs /usr/share/zoneinfo/UTC /etc/localtime; \
+    dpkg-reconfigure -f noninteractive tzdata; \
+    # Cleanup
+    apt-get clean; \
+    rm -rf /var/lib/apt/lists/*
+
+# Stage 2: Python and data science runtime
+FROM base-system AS python-runtime
+
+# Updated Python and Miniconda versions (July 2025)
+ENV PYTHON_VERSION=3.11.9 \
+    MINICONDA_VERSION=24.5.0-0 \
+    MINICONDA_SHA256=e5e5e89cdcef9332fe632cd25d318cf71f681eef029a24495c713b18e66a8018 \
+    CONDA_DIR=/opt/conda \
+    PATH=/opt/conda/bin:$PATH
+
+# Install Miniconda with improved security
+RUN set -eux; \
+    # Download and verify Miniconda
+    wget --no-verbose "https://repo.anaconda.com/miniconda/Miniconda3-py311_${MINICONDA_VERSION}-Linux-x86_64.sh" -O miniconda.sh; \
+    echo "${MINICONDA_SHA256} miniconda.sh" | sha256sum -c -; \
+    # Install Miniconda
+    bash miniconda.sh -b -p ${CONDA_DIR}; \
+    rm miniconda.sh; \
+    # Configure conda
+    conda config --system --add channels conda-forge; \
+    conda config --system --set auto_update_conda false; \
+    conda config --system --set show_channel_urls true; \
+    conda config --system --set channel_priority strict; \
+    # Update conda and install core packages
+    conda update -y conda; \
+    conda install -y python=${PYTHON_VERSION} pip setuptools; \
+    # Cleanup
+    conda clean -y --all; \
+    find ${CONDA_DIR} -follow -type f -name '*.a' -delete; \
+    find ${CONDA_DIR} -follow -type f -name '*.pyc' -delete
+
+# Stage 3: Node.js and web development tools
+FROM python-runtime AS node-runtime
+
+# Updated Node.js version (July 2025)
+ENV NODE_VERSION=22.x \
+    PNPM_VERSION=9.5.0 \
+    YARN_VERSION=4.3.1
+
+# Install Node.js and modern package managers
+RUN set -eux; \
+    # Install Node.js from NodeSource
+    curl -fsSL https://deb.nodesource.com/setup_${NODE_VERSION} | bash -; \
+    apt-get install -y --no-install-recommends nodejs; \
+    # Install modern package managers
+    npm install -g pnpm@${PNPM_VERSION}; \
+    npm install -g yarn@${YARN_VERSION}; \
+    # Install essential build tools
+    npm install -g typescript webpack webpack-cli node-gyp; \
+    # Verify installations
+    node --version; \
+    npm --version; \
+    pnpm --version; \
+    yarn --version; \
+    # Cleanup
+    apt-get clean; \
+    rm -rf /var/lib/apt/lists/* /root/.npm
+
+# Stage 4: System tools and libraries
+FROM node-runtime AS system-tools
+
+# Install system development tools and libraries
+RUN set -eux; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends \
+        # Database libraries
+        libpq-dev \
+        libmysqlclient-dev \
+        libsqlite3-dev \
+        # Graphics and media libraries
+        libjpeg-dev \
+        libpng-dev \
+        libtiff-dev \
+        libgeos-dev \
+        # Compression libraries
+        libbz2-dev \
+        liblzma-dev \
+        zlib1g-dev \
+        # SSL and crypto libraries
+        libssl-dev \
+        libffi-dev \
+        # Scientific computing libraries
+        libzmq3-dev \
+        libhdf5-dev \
+        libnetcdf-dev \
+        # System utilities
+        htop \
+        tree \
+        tmux \
+        rsync \
+        socat \
+        parallel; \
+    # Cleanup
+    apt-get clean; \
+    rm -rf /var/lib/apt/lists/*
+
+# Stage 5: Data science and ML libraries
+FROM system-tools AS ml-libraries
+
+# Copy requirements files
+COPY resources/libraries/requirements-*.txt /tmp/
+
+# Install data science and ML packages
+RUN set -eux; \
+    # Install core data science packages via conda
+    conda install -y \
+        numpy \
+        pandas \
+        scipy \
+        scikit-learn \
+        matplotlib \
+        seaborn \
+        plotly \
+        jupyter \
+        jupyterlab \
+        notebook \
+        ipywidgets \
+        numba \
+        dask \
+        xarray; \
+    # Install additional packages via pip
+    pip install --no-cache-dir --upgrade pip; \
+    pip install --no-cache-dir -r /tmp/requirements-full.txt; \
+    # Install spaCy models
+    python -m spacy download en_core_web_sm; \
+    # Cleanup
+    conda clean -y --all; \
+    rm -rf /tmp/requirements-*.txt; \
+    find ${CONDA_DIR} -follow -type f -name '*.pyc' -delete
+
+# Stage 6: Jupyter and development environment
+FROM ml-libraries AS jupyter-env
+
+# Copy Jupyter configuration
+COPY resources/jupyter/ /etc/jupyter/
+COPY resources/jupyter/extensions/ /tmp/jupyter-extensions/
+
+# Configure Jupyter environment
+RUN set -eux; \
+    # Install Jupyter extensions
+    jupyter contrib nbextension install --sys-prefix; \
+    jupyter nbextensions_configurator enable --sys-prefix; \
+    # Install custom tooling extension
+    pip install --no-cache-dir /tmp/jupyter-extensions/tooling-extension/; \
+    # Configure JupyterLab
+    jupyter lab build --minimize=True; \
+    jupyter lab clean --all; \
+    # Cleanup
+    rm -rf /tmp/jupyter-extensions; \
+    npm cache clean --force; \
+    find ${CONDA_DIR} -follow -type f -name '*.pyc' -delete
+
+# Stage 7: Web tools and services (conditional based on flavor)
+FROM jupyter-env AS web-tools
+
+ARG WORKSPACE_FLAVOR=full
+ENV WORKSPACE_FLAVOR=${WORKSPACE_FLAVOR}
+
+# Copy web tool installation scripts
+COPY resources/tools/ /tmp/tools/
+
+# Install web development tools conditionally
+RUN set -eux; \
+    if [ "${WORKSPACE_FLAVOR}" != "minimal" ]; then \
+        # Install VS Code Server
+        bash /tmp/tools/vs-code-server.sh --install; \
+        # Install Git tools
+        bash /tmp/tools/ungit.sh --install; \
+        # Install file browser
+        bash /tmp/tools/filebrowser.sh --install; \
+    fi; \
+    if [ "${WORKSPACE_FLAVOR}" = "full" ]; then \
+        # Install monitoring tools
+        bash /tmp/tools/netdata.sh --install; \
+        # Install VS Code Desktop
+        bash /tmp/tools/vs-code-desktop.sh --install; \
+        # Install Firefox
+        bash /tmp/tools/firefox.sh --install; \
+    fi; \
+    # Cleanup
+    rm -rf /tmp/tools
+
+# Stage 8: Final production image
+FROM web-tools AS final
+
+# Create non-root user for security
+RUN groupadd -r mluser && \
+    useradd -r -g mluser -m -d /home/mluser mluser && \
+    # Create workspace directories
+    mkdir -p /workspace /resources && \
+    chown -R mluser:mluser /workspace /resources /home/mluser
+
+# Copy startup scripts and configurations
+COPY resources/scripts/ /usr/local/bin/
+COPY resources/jupyter/start*.sh /usr/local/bin/
+
+# Set proper permissions
+RUN chmod +x /usr/local/bin/*.sh
+
+# Install tini for proper signal handling (updated version)
+ENV TINI_VERSION=v0.19.0
+RUN set -eux; \
+    wget --no-verbose "https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini" -O /tini; \
+    wget --no-verbose "https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini.asc" -O /tini.asc; \
+    chmod +x /tini; \
+    rm /tini.asc
+
+# Set environment variables for runtime
+ENV PATH="/opt/conda/bin:/usr/local/bin:${PATH}" \
+    SHELL=/bin/bash \
+    USER=mluser \
+    HOME=/home/mluser \
+    WORKSPACE_HOME=/workspace
+
+# Health check to ensure the application is responsive
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl --fail http://localhost:8888/api || exit 1
+
+# Set working directory
+WORKDIR /workspace
+
+# Switch to non-root user
+USER mluser
+
+# Expose common ports
+EXPOSE 8888 8000 5000 3000
+
+# Use tini as entrypoint for proper signal handling
+ENTRYPOINT ["/tini", "-g", "--"]
+
+# Default command
+CMD ["/usr/local/bin/start.sh"]
+
+# Metadata
+LABEL org.opencontainers.image.title="ML Space"
+LABEL org.opencontainers.image.description="Complete machine learning development environment"
+LABEL org.opencontainers.image.version="2.0.0"
+LABEL org.opencontainers.image.authors="ML Space Team"
+LABEL org.opencontainers.image.licenses="MIT"

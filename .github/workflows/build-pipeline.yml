@@ -25,64 +25,110 @@ on:
 
 # Define environment variables available to all jobs in this workflow.
 env:
-  # Prioritize workflow_dispatch inputs, fall back to environment variables or defaults.
-  # Using `github.event.inputs.<input_name>` is the direct way to access workflow_dispatch inputs.
-  # Avoid relying on `secrets.BUILD_ARGS` or `secrets.WORKING_DIRECTORY` for non-sensitive,
-  # configurable options. These should typically be inputs or hardcoded defaults.
-  # If you absolutely need a secret to influence build args, define it clearly as such.
-  # For now, let's assume BUILD_ARGS and WORKING_DIRECTORY are meant to be primarily inputs.
-  BUILD_SCRIPT_ARGS: ${{ github.event.inputs.build_args }}
-  BUILD_WORKING_DIRECTORY: ${{ github.event.inputs.working_directory }}
-
-  # ACTIONS_ALLOW_UNSECURE_COMMANDS: This is a critical security risk.
-  # It should be removed as soon as possible. GitHub Actions has deprecated
-  # 'set-env' and 'add-path' commands in favor of environment files.
-  # If your custom action or script still relies on this, it needs to be updated.
-  # Assuming the custom action will be updated or replaced, we'll remove this.
-  # ACTIONS_ALLOW_UNSECURE_COMMANDS: true # REMOVE THIS IN PRODUCTION
+  BUILD_SCRIPT_ARGS: ${{ github.event.inputs.build_args || '--make --force' }}
+  BUILD_WORKING_DIRECTORY: ${{ github.event.inputs.working_directory || '.' }}
 
 jobs:
   build:
-    runs-on: ubuntu-latest # Using the latest Ubuntu runner
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CACHE_HIT: false
 
     steps:
-      # Removed set-host-ip:
-      # `::set-env` is deprecated and insecure.
-      # If you need the host IP, consider if it's truly necessary in a build environment.
-      # For most build scenarios, the container's internal network or localhost is sufficient.
-      # If you must pass network info, use an output from a script and then reference it.
-      # For example:
-      # - name: Get Host IP
-      #   id: get_ip # Assign an ID to the step
-      #   run: echo "host_ip=$(hostname -I | cut -d ' ' -f 1)" >> $GITHUB_OUTPUT
-      # Then access with: ${{ steps.get_ip.outputs.host_ip }}
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Checkout Repository
-        uses: actions/checkout@v4 # Use the latest stable version of actions/checkout
-
-      # Optional: Add caching for dependencies (e.g., npm, pip, composer)
-      # This can significantly speed up builds if your build-environment action
-      # has dependency installation steps.
-      # - name: Setup Node.js Cache (Example)
-      #   if: ${{ github.event.inputs.use_cache == 'true' || github.event_name == 'push' }}
-      #   uses: actions/cache@v4
-      #   with:
-      #     path: ~/.npm # Or ~/.cache/pip, vendor/, etc.
-      #     key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }} # Adjust for your ecosystem
-      #     restore-keys: |
-      #       ${{ runner.os }}-node-
-
-      - name: Run Build Scripts
-        # Use a specific, pinned version of your custom action for reproducibility and stability.
-        # If your action is stable, consider using a tag (e.g., 'v1').
-        uses: ./.github/actions/build-environment@main # Or @v1 if you tag your actions
+      # Comprehensive caching strategy for improved performance
+      - name: Cache Python dependencies
+        id: cache-pip
+        uses: actions/cache@v4
         with:
-          # Pass workflow inputs directly to the action
+          path: |
+            ~/.cache/pip
+            ~/.cache/pipx
+          key: ${{ runner.os }}-python-${{ hashFiles('**/requirements*.txt', '**/pyproject.toml', '**/setup.py') }}
+          restore-keys: |
+            ${{ runner.os }}-python-
+
+      - name: Cache Node.js dependencies
+        id: cache-node
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.npm
+            ~/.cache/yarn
+            node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json', '**/yarn.lock', '**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Cache Docker layers
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ hashFiles('Dockerfile*') }}-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-${{ hashFiles('Dockerfile*') }}-
+            ${{ runner.os }}-buildx-
+
+      - name: Cache Conda packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/conda_pkgs_dir
+            ~/.conda
+          key: ${{ runner.os }}-conda-${{ hashFiles('**/environment.yml', '**/conda-requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-conda-
+
+      # Set up Docker Buildx for multi-platform builds
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Cache detection for conditional execution
+      - name: Check cache status
+        run: |
+          echo "Python cache hit: ${{ steps.cache-pip.outputs.cache-hit }}"
+          echo "Node cache hit: ${{ steps.cache-node.outputs.cache-hit }}"
+          if [[ "${{ steps.cache-pip.outputs.cache-hit }}" == "true" ]]; then
+            echo "CACHE_HIT=true" >> $GITHUB_ENV
+          fi
+
+      # Run build using custom action with improved caching
+      - name: Run Build Scripts
+        uses: ./.github/actions/build-environment
+        with:
           build_args: ${{ env.BUILD_SCRIPT_ARGS }}
           working_directory: ${{ env.BUILD_WORKING_DIRECTORY }}
         env:
-          # Only pass necessary secrets. GITHUB_TOKEN is often required for actions
-          # that interact with the repository (e.g., pushing changes, creating releases).
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # If your custom action specifically needs other secrets, list them here.
-          # MY_OTHER_SECRET: ${{ secrets.MY_OTHER_SECRET }}
+          BUILDX_CACHE_FROM: type=local,src=/tmp/.buildx-cache
+          BUILDX_CACHE_TO: type=local,dest=/tmp/.buildx-cache-new,mode=max
+
+      # Move Docker cache to avoid cache corruption
+      - name: Move Docker cache
+        if: always()
+        run: |
+          if [ -d "/tmp/.buildx-cache-new" ]; then
+            rm -rf /tmp/.buildx-cache
+            mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+          fi
+
+      # Upload build artifacts
+      - name: Upload build artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs-${{ github.run_id }}
+          path: |
+            build/logs/
+            *.log
+          retention-days: 7
+
+      # Post-build cleanup
+      - name: Cleanup temporary files
+        if: always()
+        run: |
+          docker system prune -f || true
+          rm -rf /tmp/build-* || true
