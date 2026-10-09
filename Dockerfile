@@ -47,6 +47,7 @@ RUN apt-get update && \
     locales=2.35-0ubuntu3.1 && \
     sed -i -e 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen && \
     locale-gen && \
+    dpkg-reconfigure --frontend=noninteractive locales && \
     update-locale LANG=en_US.UTF-8 && \
     clean-layer.sh
 
@@ -201,6 +202,7 @@ ENV PATH="${RESOURCES_PATH}/.pyenv/shims:${RESOURCES_PATH}/.pyenv/bin:${PATH}" \
 
 # Install pipx.
 RUN pip install pipx && \
+    # Configure pipx
     python -m pipx ensurepath && \
     clean-layer.sh
 ENV PATH="${HOME}/.local/bin:${PATH}"

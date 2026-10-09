@@ -1,4 +1,4 @@
-# Makefile for local development with Act, Docker, and setup for dependencies
+# Makefile for local development and CI/CD operations
 
 # Define environment variables
 ACT ?= act

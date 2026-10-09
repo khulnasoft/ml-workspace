@@ -24,7 +24,7 @@ if [ -z "$USER_GID" ]; then
     exit 1
 fi
 
-USER_GID=0
+# USER_GID is passed as an environment variable
 
 for d in $@; do
   find "$d" \

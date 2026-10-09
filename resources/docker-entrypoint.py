@@ -5,20 +5,14 @@ Main Workspace Run Script
 """
 
 # Enable logging
-import logging
 import math
 import os
 import sys
 from subprocess import call
 from urllib.parse import quote
 
-logging.basicConfig(
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    level=logging.INFO,
-    stream=sys.stdout,
-)
-
-log = logging.getLogger(__name__)
+sys.path.append(os.path.join(os.path.dirname(__file__), "scripts"))
+from workspace_utils import log
 
 log.info("Starting...")
 
@@ -76,7 +70,7 @@ if ENV_MAX_NUM_THREADS:
             )
             if cpu_count > 0 and cpu_count < os.cpu_count():
                 ENV_MAX_NUM_THREADS = str(cpu_count)
-        except:
+        except Exception:
             pass
         if (
             not ENV_MAX_NUM_THREADS
@@ -89,12 +83,14 @@ if ENV_MAX_NUM_THREADS:
             # there should be atleast one thread less compared to cores
             ENV_MAX_NUM_THREADS = str(int(ENV_MAX_NUM_THREADS) - 1)
 
-        # set a maximum of 32, in most cases too many threads are adding too much overhead
+        # set a maximum of 32, in most cases too many threads
+        # are adding too much overhead
         if int(ENV_MAX_NUM_THREADS) > 32:
             ENV_MAX_NUM_THREADS = "32"
 
     # only set if it is not None or empty
-    # OMP_NUM_THREADS: Suggested value: vCPUs / 2 in which vCPUs is the number of virtual CPUs.
+    # OMP_NUM_THREADS: Suggested value: vCPUs / 2
+    # in which vCPUs is the number of virtual CPUs.
     set_env_variable(
         "OMP_NUM_THREADS", ENV_MAX_NUM_THREADS, ignore_if_set=True
     )  # OpenMP

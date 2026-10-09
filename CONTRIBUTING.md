@@ -49,44 +49,44 @@ To simplify the process of building this project from scratch, we provide build-
 
 #### Build components
 
-Execute this command in the project root folder to compile, assemble, and package all project components:
+Execute this command using the Makefile to build the project components:
+
+```bash
+make build
+```
+
+Alternatively, if you prefer using `act` directly:
 
 ```bash
 act -b -s BUILD_ARGS="--make" -j build
 ```
 
-You can also run the build only for a specific (sub-)component by providing the path to the component folder, as shown below:
-
-```bash
-act -b -s BUILD_ARGS="--make" -s WORKING_DIRECTORY="./docs" -j build
-```
-
 #### Run linting & style checks
 
-To run all relevant linting and code style checks for all components, execute:
+We use **Ruff** for linting and formatting. To run checks:
 
 ```bash
-act -b -s BUILD_ARGS="--check" -j build
+make lint
+```
+
+To automatically fix issues and format code:
+
+```bash
+make format
 ```
 
 #### Run integration & unit tests
 
-Once all the project artifacts are build, you can execute this command in the project root folder to run the integration & unit tests for all components:
+To execute the test suite:
 
 ```bash
-act -b -s BUILD_ARGS="--test" -j build
+make test
 ```
 
-It is also possible to combine multiple steps into one command:
+It is also possible to run all checks (lint + test) at once:
 
 ```bash
-act -b -s BUILD_ARGS="--check --make --test" -j build
-```
-
-The `--check --make --test` steps are configured as default. If you call the job without `BUILD_ARGS` the build and test steps will be executed:
-
-```bash
-act -b -j build
+make check
 ```
 
 #### Release a new version
@@ -152,19 +152,14 @@ Commit messages should be as standardized as possible within the repository. A f
 
 ### Python conventions
 
-- Code Style: [PEP8](https://www.python.org/dev/peps/pep-0008/)
-- Documentation Style: [Google Style](https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html) (checked by [pydocstyle](https://github.com/PyCQA/pydocstyle))
+- Code Style & Formatting: [Ruff](https://github.com/astral-sh/ruff)
+- Documentation Style: [Google Style](https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html)
 - Naming Conventions: [naming-convention-guides](https://github.com/naming-convention/naming-convention-guides/tree/master/python#python-naming-convention)
 - Build Tool: [setuptool](https://github.com/pypa/setuptools)
-- Code Formatter: [black](https://github.com/psf/black)
-- Import Sorting: [isort](https://github.com/PyCQA/isort)
-- Linting: [flake8](https://github.com/PyCQA/flake8)
-- Type Checking: [mypy](https://github.com/python/mypy)
-- Testing: [pytest](http://doc.pytest.org/) + [pipenv](https://github.com/pypa/pipenv)
+- Testing: [pytest](http://doc.pytest.org/)
 - Logging: [logging](https://docs.python.org/3/library/logging.html)
 - Package Manager: [pip](https://github.com/pypa/pip)
-- Use type hints wherever possible: [Cheatsheet](https://mypy.readthedocs.io/en/latest/cheat_sheet_py3.html)
-- Minimum compatibility: Python 3.6
+- Minimum compatibility: Python 3.8
 
 #### Code style & naming
 
@@ -172,45 +167,18 @@ Commit messages should be as standardized as possible within the repository. A f
 - **Documentation style** should follow the [Google style](https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html).
 - **Naming** should follow the recommendations [here](https://github.com/naming-convention/naming-convention-guides/tree/master/python#python-naming-convention).
 
-#### Code formatting
+#### Code formatting & Linting
 
-We use [black](https://github.com/ambv/black) for code formatting and [isort](https://github.com/PyCQA/isort) for import sorting. The following commands run `black` and `isort` on all Python files of the component (when executed in the component root):
+We use [Ruff](https://github.com/astral-sh/ruff) for both formatting and linting. Ruff is significantly faster than traditional tools and replaces `black`, `isort`, `flake8`, and `pydocstyle`.
 
-```bash
-isort --profile black src
-black src
-```
-
-If you want to only check if the formatting and sorting is applied correctly to all files, execute:
+To check and format the code, use the following Makefile commands:
 
 ```bash
-# formatting check:
-black --check src
-# import sorting check:
-isort --profile black --check-only src
-```
+# Run linting and check formatting:
+make lint
 
-You can also configure `black` and `isort` inside your code editor. For example, if you're using [Visual Studio Code](https://code.visualstudio.com/) with the [Python extension](https://marketplace.visualstudio.com/items?itemName=ms-python.python), you can add the following to your `settings.json` for formatting and auto-format your files on save:
-
-```json
-{
-    "python.formatting.provider": "black",
-    "python.sortImports.args": [
-        "--multi-line=3",
-        "--trailing-comma",
-        "--force-grid-wrap=0",
-        "--use-parentheses",
-        "--line-width=88"
-    ],
-    "[python]": {
-        "editor.defaultFormatter": "ms-python.python",
-        "editor.formatOnPaste": false,
-        "editor.formatOnSave": true,
-        "editor.codeActionsOnSave": {
-            "source.organizeImports": true
-        }
-    }
-}
+# Apply formatting and fix linting issues:
+make format
 ```
 
 #### Code linting
