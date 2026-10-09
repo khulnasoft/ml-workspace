@@ -1,0 +1,39 @@
+# Development dependencies
+-r requirements.txt
+
+# Testing
+pytest>=7.0.0
+pytest-cov>=3.0.0
+pytest-mock>=3.10.0
+pytest-xdist>=3.0.0
+
+# Code quality
+black>=22.0.0
+isort>=5.10.0
+mypy>=0.910
+flake8>=4.0.0
+flake8-bugbear>=21.9.2
+flake8-docstrings>=1.6.0
+flake8-import-order>=0.18.1
+pre-commit>=2.15.0
+
+# Documentation
+sphinx>=4.2.0
+sphinx-rtd-theme>=1.0.0
+sphinx-autodoc-typehints>=1.12.0
+myst-parser>=0.15.2
+
+# Build and packaging
+build>=0.7.0
+twine>=3.7.1
+wheel>=0.37.0
+setuptools>=42.0.0
+
+# Other development tools
+ipython>=8.0.0
+jupyter>=1.0.0
+jupyter-contrib-nbextensions>=0.5.1
+jupyterlab>=3.2.0
+pylint>=2.12.0
+safety>=1.10.3
+pip-audit>=1.4.0

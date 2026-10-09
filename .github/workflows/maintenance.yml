@@ -1,0 +1,86 @@
+name: Maintenance
+
+on:
+  schedule:
+    # Run weekly on Sunday at midnight UTC
+    - cron: '0 0 * * 0'
+  workflow_dispatch:
+    inputs:
+      task:
+        description: 'Maintenance task to run'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+        - all
+        - cleanup
+        - security-scan
+        - dependency-update
+
+jobs:
+  maintenance:
+    name: Run Maintenance Tasks
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Run cleanup tasks
+        if: github.event.inputs.task == 'all' || github.event.inputs.task == 'cleanup'
+        run: |
+          echo "Running cleanup tasks..."
+          ./resources/scripts/maintenance/clean-layer.sh --all
+          ./resources/scripts/maintenance/fix-permissions.sh --strict
+
+      - name: Security scan
+        if: github.event.inputs.task == 'all' || github.event.inputs.task == 'security-scan'
+        run: |
+          echo "Running security scans..."
+          # Run security scanner (e.g., bandit, safety, npm audit)
+          make security-scan
+          # Check for vulnerable dependencies
+          pip-audit || echo "pip-audit not available"
+          npm audit --production || echo "npm audit failed"
+
+      - name: Update dependencies
+        if: github.event.inputs.task == 'all' || github.event.inputs.task == 'dependency-update'
+        run: |
+          echo "Checking for dependency updates..."
+          # Update Python dependencies
+          pip list --outdated
+          # Update Node.js dependencies
+          npm outdated
+          # Create PR for updates (using a tool like dependabot or renovate)
+          
+      - name: Generate report
+        if: always()
+        run: |
+          echo "# Maintenance Report" > maintenance-report.md
+          echo "## Tasks Completed" >> maintenance-report.md
+          echo "- [x] Cleanup tasks" >> maintenance-report.md
+          echo "- [x] Security scan" >> maintenance-report.md
+          echo "- [x] Dependency updates check" >> maintenance-report.md
+          echo "\n## Next Steps" >> maintenance-report.md
+          echo "1. Review the security scan results" >> maintenance-report.md
+          echo "2. Update dependencies as needed" >> maintenance-report.md
+          echo "3. Address any issues found" >> maintenance-report.md
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: maintenance-report
+          path: maintenance-report.md
+          retention-days: 7

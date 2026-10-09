@@ -2,89 +2,174 @@
 
 # Define environment variables
 ACT ?= act
-DOCKER_IMAGE ?= ml-workspace
+DOCKER_COMPOSE ?= docker-compose
+DOCKER_IMAGE ?= ml-buildkit-image
 BUILD_ARGS ?= "--make"
 VERSION ?= "v1.0.0"
-GITHUB_TOKEN ?= $(shell echo $GITHUB_TOKEN)
+GITHUB_TOKEN ?= $(shell echo $${GITHUB_TOKEN})
+DEPENDENCY_INSTALL ?= true
 PYTHON ?= python3
+PIP ?= pip3
+WORKDIR ?= $(shell pwd)
 
-# Project paths
-BUILD_DIR := build
-RESOURCES_DIR := resources
-POLICIES_DIR := policies
+# Colors
+GREEN  := $(shell tput -Txterm setaf 2)
+YELLOW := $(shell tput -Txterm setaf 3)
+WHITE  := $(shell tput -Txterm setaf 7)
+RESET  := $(shell tput -Txterm sgr0)
 
-.PHONY: help build lint test check setup format clean sbom scan audit security-scan
+# Add empty line before help
+define NEWLINE
+
+
+endef
 
 # Default target (help)
+.PHONY: help
 help:
-	@echo "Available targets:"
-	@echo "  setup                - Install local development dependencies"
-	@echo "  format               - Format code using ruff"
-	@echo "  lint                 - Run linting checks using ruff"
-	@echo "  test                 - Run unit tests using pytest"
-	@echo "  build                - Build the Docker image"
-	@echo "  check                - Run lint, format check, and tests"
-	@echo "  sbom                 - Generate Software Bill of Materials (SBOM)"
-	@echo "  scan                 - Scan image for vulnerabilities using Trivy"
-	@echo "  audit                - Audit image config using OPA/Conftest"
-	@echo "  security-scan        - Run all security checks (SBOM, Scan, Audit)"
-	@echo "  clean                - Clean up build artifacts"
+	@echo '${NEWLINE}${YELLOW}Makefile for ML Workspace Development${RESET}'
+	@echo '${GREEN}Available targets:${RESET}'
+	@echo ''
+	@echo '${YELLOW}Setup:${RESET}'
+	@echo '  ${WHITE}setup${RESET}              - Setup development environment'
+	@echo '  ${WHITE}install-deps${RESET}       - Install Python and system dependencies'
+	@echo '  ${WHITE}env-file${RESET}           - Create .env file if not exists'
+	@echo ''
+	@echo '${YELLOW}Build:${RESET}'
+	@echo '  ${WHITE}build${RESET}              - Build all components'
+	@echo '  ${WHITE}build-subcomponent${RESET} - Build a specific subcomponent (e.g., docs)'
+	@echo ''
+	@echo '${YELLOW}Test & Lint:${RESET}'
+	@echo '  ${WHITE}test${RESET}               - Run unit and integration tests'
+	@echo '  ${WHITE}lint${RESET}               - Run linting and code style checks'
+	@echo '  ${WHITE}check${RESET}              - Run linting, style checks, and tests'
+	@echo ''
+	@echo '${YELLOW}Release:${RESET}'
+	@echo '  ${WHITE}release${RESET}            - Trigger release pipeline'
+	@echo '  ${WHITE}release-local${RESET}      - Trigger release process locally'
+	@echo '  ${WHITE}bump-version${RESET}       - Bump version (use VERSION=x.y.z)'
+	@echo ''
+	@echo '${YELLOW}Docker:${RESET}'
+	@echo '  ${WHITE}docker-build${RESET}       - Build Docker image'
+	@echo '  ${WHITE}docker-push${RESET}        - Push Docker image to registry'
+	@echo '  ${WHITE}docker-clean${RESET}       - Remove Docker containers and images'
+	@echo ''
+	@echo '${YELLOW}Cleanup:${RESET}'
+	@echo '  ${WHITE}clean${RESET}              - Clean build artifacts'
+	@echo '  ${WHITE}clean-all${RESET}          - Clean everything (including Docker)'
+
+# Check for required commands
+.PHONY: check-requirements
+check-requirements:
+	@command -v docker >/dev/null 2>&1 || { echo >&2 "Docker is required but not installed. Aborting."; exit 1; }
+	@command -v $(ACT) >/dev/null 2>&1 || { echo >&2 "Act is required but not installed. Install with: brew install act"; exit 1; }
 
 # Setup environment
-setup:
-	@echo "Installing build requirements..."
-	$(PYTHON) -m pip install -r build_requirements.txt
+.PHONY: setup
+setup: check-requirements env-file
+	@echo "${YELLOW}Setting up the environment...${RESET}"
+	@docker build -t $(DOCKER_IMAGE) .
+	@if [ "$(DEPENDENCY_INSTALL)" = "true" ]; then \
+		$(MAKE) install-deps; \
+	fi
 
-# Formatting and Linting
-format:
-	ruff format .
-	ruff check --fix .
+# Create .env file if not exists
+.PHONY: env-file
+env-file:
+	@if [ ! -f .env ]; then \
+		echo "${YELLOW}Creating .env file...${RESET}"; \
+		cp .env.example .env; \
+		echo "${GREEN}Created .env file from example${RESET}"; \
+	fi
 
-lint:
-	ruff check .
-	ruff format --check .
+# Install dependencies
+.PHONY: install-deps
+install-deps:
+	@echo "${YELLOW}Installing dependencies...${RESET}"
+	@$(PIP) install -r requirements-dev.txt
+	@docker run --rm -v $(WORKDIR):/workspace $(DOCKER_IMAGE) make install
 
-# Testing (runs integration tests using build.py to manage container lifecycle)
-test:
-	$(PYTHON) build.py --flavor=minimal --test
+# Build all components
+.PHONY: build
+build: setup
+	$(ACT) -b -s BUILD_ARGS="--make" -j build
 
-# Run pytest directly (requires a running workspace on localhost:8080)
-test-local:
-	pytest $(RESOURCES_DIR)/tests
+# Build a specific sub-component
+.PHONY: build-subcomponent
+build-subcomponent: setup
+	$(ACT) -b -s BUILD_ARGS="--make" -s WORKING_DIRECTORY="./docs" -j build
 
-# Build Docker image
-build:
-	$(PYTHON) build.py --flavor=minimal --make
+# Run tests
+.PHONY: test
+test: setup
+	$(ACT) -b -s BUILD_ARGS="--test" -j build
 
-# Run all checks
+# Run specific test type (unit, integration, etc.)
+.PHONY: test-%
+test-%: setup
+	$(ACT) -b -s BUILD_ARGS="--test $*" -j build
+
+# Run linting
+.PHONY: lint
+lint: setup
+	$(ACT) -b -s BUILD_ARGS="--check" -j build
+
+# Run checks (lint + test)
+.PHONY: check
 check: lint test
 
-# Security tools
-sbom:
-	@echo "Generating SBOM..."
-	@mkdir -p $(BUILD_DIR)
-	@docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v $(PWD)/$(BUILD_DIR):/out \
-		anchore/syft:latest $(DOCKER_IMAGE)-minimal:$(VERSION) -o json --file /out/sbom.json
+# Release targets
+.PHONY: release
+release: check
+	$(ACT) -b -s VERSION="$(VERSION)" -s GITHUB_TOKEN="$(GITHUB_TOKEN)" -j release
 
-scan:
-	@echo "Scanning for vulnerabilities..."
-	@docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
-		-v $${HOME}/.cache:/root/.cache \
-		aquasec/trivy:latest image --severity HIGH,CRITICAL $(DOCKER_IMAGE)-minimal:$(VERSION)
+.PHONY: release-local
+release-local: check
+	$(ACT) -b -s VERSION="$(VERSION)" -s GITHUB_TOKEN="$(GITHUB_TOKEN)" -j release
 
-audit:
-	@echo "Auditing image configuration..."
-	@mkdir -p $(BUILD_DIR)
-	@docker inspect $(DOCKER_IMAGE)-minimal:$(VERSION) > $(BUILD_DIR)/inspect.json
-	@docker run --rm -v $(PWD):/project -w /project openpolicyagent/conftest test $(BUILD_DIR)/inspect.json -p $(POLICIES_DIR)/
+# Bump version
+.PHONY: bump-version
+bump-version:
+	@if [ -z "$(VERSION)" ]; then \
+		echo "Error: VERSION is not set. Usage: make bump-version VERSION=x.y.z"; \
+		exit 1; \
+	fi
+	@echo "Bumping version to $(VERSION)"
+	@echo "$(VERSION)" > VERSION
+	@git add VERSION
+	@git commit -m "Bump version to $(VERSION)"
+	@git tag -a v$(VERSION) -m "Version $(VERSION)"
+	@echo "Version bumped to $(VERSION), committed and tagged"
 
-security-scan: sbom scan audit
+# Docker operations
+.PHONY: docker-build
+docker-build:
+	docker build -t $(DOCKER_IMAGE) .
 
-# Cleaning
+.PHONY: docker-push
+docker-push: docker-build
+	docker push $(DOCKER_IMAGE)
+
+.PHONY: docker-clean
+docker-clean:
+	docker system prune -f
+	docker volume prune -f
+
+# Cleanup
+.PHONY: clean
 clean:
-	@echo "Cleaning build artifacts..."
-	@rm -rf $(BUILD_DIR)
+	@echo "${YELLOW}Cleaning build artifacts...${RESET}"
+	@rm -rf build/ dist/ *.egg-info/ .pytest_cache/ .mypy_cache/ .coverage htmlcov/
+	@find . -type d -name '__pycache__' -exec rm -rf {} +
+	@find . -type f -name '*.py[co]' -delete
 
-# Legacy act support (optional)
-act-build:
-	$(ACT) -b -s BUILD_ARGS="--make" -j build
+.PHONY: clean-all
+clean-all: clean docker-clean
+	@echo "${YELLOW}Removing Docker images...${RESET}"
+	@docker rmi -f $(docker images -q $(DOCKER_IMAGE) 2>/dev/null) 2>/dev/null || true
+
+# Include custom Makefile if exists
+-include Makefile.local
+
+# Print help by default
+.DEFAULT_GOAL := help

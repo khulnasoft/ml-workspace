@@ -1,0 +1,109 @@
+name: Enhanced Build Pipeline
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_args:
+        description: "Build arguments (e.g., --make --force)"
+        required: false
+        default: "--make --force"
+      working_directory:
+        description: "Working directory for the build"
+        required: false
+        default: "."
+  push:
+    branches: [main, develop]
+    paths-ignore:
+      - '**.md'
+      - '**.txt'
+      - '**.png'
+      - 'LICENSE'
+      - '.gitignore'
+      - '.github/**'
+      - 'docs/**'
+      - 'examples/**'
+
+env:
+  BUILD_SCRIPT_ARGS: ${{ github.event.inputs.build_args || '--make --force' }}
+  WORKING_DIRECTORY: ${{ github.event.inputs.working_directory || '.' }}
+  PYTHON_VERSION: '3.10'
+
+jobs:
+  build:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Cache Docker layers
+        uses: actions/cache@v3
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+          npm ci
+
+      - name: Run pre-build checks
+        run: |
+          # Run linting and type checking
+          make lint
+          # Run security checks
+          make security-check
+
+      - name: Build components
+        run: |
+          # Apply configurations
+          ./resources/scripts/system/apply-config.sh
+          # Build components
+          make build
+
+      - name: Run tests
+        run: |
+          make test
+
+      - name: Build and push Docker image
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+        run: |
+          # Build and push the Docker image
+          make docker-build
+          if [ "$GITHUB_REF" = "refs/heads/main" ]; then
+            make docker-push
+          fi
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-artifacts
+          path: |
+            build/
+            dist/
+            *.whl
+            *.tar.gz
+          retention-days: 7

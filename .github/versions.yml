@@ -1,0 +1,128 @@
+# Centralized Version Management for ML Space
+# This file maintains all dependency versions for reproducible builds
+# Update this file when upgrading dependencies
+
+# Base Images
+base_images:
+  ubuntu: "22.04"
+  python: "3.11.9"
+  node: "22.4.1"
+
+# Development Tools
+development:
+  java_version: "21"
+  maven_version: "3.9.7"
+  gradle_version: "8.8"
+  git_version: "2.45.2"
+
+# Container Tools
+containers:
+  docker_compose: "v2.29.1"
+  kubectl: "v1.31.0"
+  kind: "v0.24.0"
+  helm: "v3.15.3"
+  tini: "v0.19.0"
+
+# Python Ecosystem
+python:
+  miniconda_version: "24.5.0-0"
+  miniconda_sha256: "e5e5e89cdcef9332fe632cd25d318cf71f681eef029a24495c713b18e66a8018"
+  pip_version: "24.1.2"
+  setuptools_version: "70.3.0"
+  wheel_version: "0.43.0"
+  pipx_version: "1.6.0"
+
+# Node.js Ecosystem
+nodejs:
+  npm_version: "10.8.1"
+  yarn_version: "4.3.1"
+  pnpm_version: "9.5.0"
+  typescript_version: "5.5.3"
+  webpack_version: "5.92.1"
+
+# Data Science Libraries (major versions)
+data_science:
+  numpy: "1.26.4"
+  pandas: "2.2.2"
+  scipy: "1.13.1"
+  scikit_learn: "1.5.1"
+  matplotlib: "3.9.1"
+  seaborn: "0.13.2"
+  plotly: "5.22.0"
+  jupyter: "1.0.0"
+  jupyterlab: "4.2.3"
+  notebook: "7.2.1"
+
+# Machine Learning Frameworks
+ml_frameworks:
+  tensorflow: "2.16.2"
+  pytorch: "2.3.1"
+  transformers: "4.42.4"
+  accelerate: "0.32.1"
+  datasets: "2.20.0"
+
+# Database and Storage
+databases:
+  postgresql: "16.3"
+  redis: "7.2.5"
+  mongodb: "7.0.12"
+  sqlite: "3.46.0"
+
+# Web Framework and API Tools
+web:
+  fastapi: "0.111.0"
+  uvicorn: "0.30.1"
+  gunicorn: "22.0.0"
+  nginx: "1.26.1"
+  openresty: "1.25.3.1"
+
+# Monitoring and Observability
+monitoring:
+  prometheus: "2.53.1"
+  grafana: "11.1.0"
+  elasticsearch: "8.14.3"
+  kibana: "8.14.3"
+
+# Security Tools
+security:
+  bandit: "1.7.9"
+  safety: "3.2.3"
+  semgrep: "1.79.0"
+  trivy: "0.53.0"
+  hadolint: "2.12.0"
+
+# GitHub Actions
+github_actions:
+  checkout: "v4"
+  setup_python: "v5"
+  setup_node: "v4"
+  cache: "v4"
+  upload_artifact: "v4"
+  docker_setup_buildx: "v3"
+  docker_login: "v3"
+  docker_build_push: "v5"
+  docker_metadata: "v5"
+
+# Quality Tools
+quality:
+  black: "24.4.2"
+  isort: "5.13.2"
+  flake8: "7.1.0"
+  mypy: "1.10.1"
+  pytest: "8.2.2"
+  coverage: "7.6.0"
+  pre_commit: "3.7.1"
+
+# Documentation
+documentation:
+  sphinx: "7.4.7"
+  mkdocs: "1.6.0"
+  mdbook: "0.4.40"
+
+# Update Schedule
+# - Patch versions: Monthly
+# - Minor versions: Quarterly
+# - Major versions: Annually (with testing period)
+#
+# Last updated: 2025-07-05
+# Next scheduled update: 2025-08-05

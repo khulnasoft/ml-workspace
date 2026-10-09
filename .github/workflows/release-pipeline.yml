@@ -20,7 +20,7 @@ jobs:
       - name: set-version-from-milestone
         if: github.event.milestone != null && github.event.milestone.title != null
         run: |
-          VERSION=$(echo "${{ github.event.milestone.title }}" | sed "s/^v//")
+          VERSION=$(sed "s/^v//" <<<"${{ github.event.milestone.title }}")
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "PR_MILESTONE_LINK=-M ${{ github.event.milestone.title }}" >> $GITHUB_ENV
       - name: set-version-from-input
@@ -32,8 +32,16 @@ jobs:
             echo "The version is not valid: ${{ env.VERSION }}"
             exit 1
           fi
+      # GitHub token is already available as secrets.GITHUB_TOKEN
+      # No need to set it again
       - name: set-host-ip
         run: echo "_HOST_IP=$(hostname -I | cut -d ' ' -f 1)" >> $GITHUB_ENV
+      - name: install-latest-git
+        if: env.GITHUB_ACTOR == 'nektos/act' && env.GITHUB_TOKEN != null && env.GITHUB_TOKEN != ''
+        run: |
+          # Required for local checkout
+          apt-get update
+          apt-get install -y git
       - name: create-release-branch
         if: github.token != ''
         uses: peterjgrainger/action-create-branch@v2.4.0
@@ -42,7 +50,7 @@ jobs:
         with:
           branch: "${{ env.BRANCH_PREFIX }}${{ env.VERSION }}"
       - name: checkout-release-branch
-        if: github.token != ''
+        if: secrets.GITHUB_TOKEN != null
         uses: actions/checkout@v4
         with:
           fetch-depth: 0

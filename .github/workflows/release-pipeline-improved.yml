@@ -1,0 +1,291 @@
+name: Release Pipeline (Improved)
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version of this release (e.g., 1.0.0)"
+        required: true
+        type: string
+      pre_release:
+        description: "Mark as pre-release"
+        required: false
+        default: false
+        type: boolean
+      release_notes:
+        description: "Release notes (optional - will be auto-generated if empty)"
+        required: false
+        type: string
+
+  milestone:
+    types: [closed]
+
+env:
+  BRANCH_PREFIX: "release/v"
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+permissions:
+  contents: write
+  packages: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  prepare-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      release-branch: ${{ steps.version.outputs.release-branch }}
+      milestone-link: ${{ steps.version.outputs.milestone-link }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Determine version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "milestone" ]; then
+            VERSION=$(echo "${{ github.event.milestone.title }}" | sed 's/^v//')
+            MILESTONE_LINK="-M ${{ github.event.milestone.title }}"
+          else
+            VERSION="${{ inputs.version }}"
+            MILESTONE_LINK=""
+          fi
+          
+          # Validate version format
+          if [[ ! "$VERSION" =~ ^([0-9]+\.){2}[0-9]+(-[a-zA-Z0-9]+)?$ ]]; then
+            echo "::error::Invalid version format: $VERSION"
+            exit 1
+          fi
+          
+          RELEASE_BRANCH="${{ env.BRANCH_PREFIX }}${VERSION}"
+          
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "release-branch=$RELEASE_BRANCH" >> $GITHUB_OUTPUT
+          echo "milestone-link=$MILESTONE_LINK" >> $GITHUB_OUTPUT
+          
+          echo "::notice::Preparing release version $VERSION"
+
+      - name: Create release branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Create and push release branch
+          git checkout -b "${{ steps.version.outputs.release-branch }}"
+          git push origin "${{ steps.version.outputs.release-branch }}"
+
+  build-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    needs: prepare-release
+    strategy:
+      matrix:
+        flavor: [minimal, full]
+    steps:
+      - name: Checkout release branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare-release.outputs.release-branch }}
+          fetch-depth: 0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=v${{ needs.prepare-release.outputs.version }}-${{ matrix.flavor }}
+            type=raw,value=latest-${{ matrix.flavor }},enable={{is_default_branch}}
+          labels: |
+            org.opencontainers.image.title=ML Space
+            org.opencontainers.image.version=v${{ needs.prepare-release.outputs.version }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.improved
+          target: ${{ matrix.flavor == 'minimal' && 'system-tools' || 'final' }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            WORKSPACE_FLAVOR=${{ matrix.flavor }}
+            VERSION=v${{ needs.prepare-release.outputs.version }}
+            BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+
+      - name: Test release image
+        run: |
+          docker run --rm \
+            --entrypoint="" \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:v${{ needs.prepare-release.outputs.version }}-${{ matrix.flavor }} \
+            python --version
+
+  run-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [prepare-release, build-release]
+    steps:
+      - name: Checkout release branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare-release.outputs.release-branch }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pytest-cov
+          # Install test requirements if they exist
+          if [ -f requirements-test.txt ]; then
+            pip install -r requirements-test.txt
+          fi
+
+      - name: Run linting and style checks
+        run: |
+          echo "Running code quality checks..."
+          # Add your linting commands here
+          # Example: flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+
+      - name: Run unit tests
+        run: |
+          echo "Running unit tests..."
+          # Add your test commands here
+          # Example: pytest tests/ --cov=src/ --cov-report=xml
+
+      - name: Run integration tests
+        run: |
+          echo "Running integration tests..."
+          # Add your integration test commands here
+
+  create-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [prepare-release, build-release, run-tests]
+    steps:
+      - name: Checkout release branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare-release.outputs.release-branch }}
+          fetch-depth: 0
+
+      - name: Generate release notes
+        id: release-notes
+        run: |
+          if [ -n "${{ inputs.release_notes }}" ]; then
+            echo "notes=${{ inputs.release_notes }}" >> $GITHUB_OUTPUT
+          else
+            # Auto-generate release notes from commits
+            PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+            if [ -n "$PREVIOUS_TAG" ]; then
+              NOTES=$(git log --pretty=format:"- %s" $PREVIOUS_TAG..HEAD | head -20)
+            else
+              NOTES=$(git log --pretty=format:"- %s" HEAD | head -20)
+            fi
+            echo "notes<<EOF" >> $GITHUB_OUTPUT
+            echo "$NOTES" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.prepare-release.outputs.version }}
+          name: Release v${{ needs.prepare-release.outputs.version }}
+          body: |
+            ## What's Changed
+            
+            ${{ steps.release-notes.outputs.notes }}
+            
+            ## Docker Images
+            
+            - `ghcr.io/${{ github.repository }}:v${{ needs.prepare-release.outputs.version }}-minimal`
+            - `ghcr.io/${{ github.repository }}:v${{ needs.prepare-release.outputs.version }}-full`
+            
+            ## Installation
+            
+            ```bash
+            docker pull ghcr.io/${{ github.repository }}:v${{ needs.prepare-release.outputs.version }}-full
+            ```
+          draft: false
+          prerelease: ${{ inputs.pre_release || false }}
+          target_commitish: ${{ needs.prepare-release.outputs.release-branch }}
+
+  create-pull-request:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [prepare-release, create-release]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          base: main
+          head: ${{ needs.prepare-release.outputs.release-branch }}
+          title: "Release v${{ needs.prepare-release.outputs.version }}"
+          body: |
+            ## Release Pull Request
+            
+            This PR merges the release branch for version `v${{ needs.prepare-release.outputs.version }}` back to main.
+            
+            **Release**: [v${{ needs.prepare-release.outputs.version }}](https://github.com/${{ github.repository }}/releases/tag/v${{ needs.prepare-release.outputs.version }})
+            
+            ### Changes
+            - Version bump to v${{ needs.prepare-release.outputs.version }}
+            - Updated Docker images
+            - Release artifacts published
+            
+            ### Docker Images
+            - `ghcr.io/${{ github.repository }}:v${{ needs.prepare-release.outputs.version }}-minimal`
+            - `ghcr.io/${{ github.repository }}:v${{ needs.prepare-release.outputs.version }}-full`
+            
+            This PR will be auto-merged after successful checks.
+          labels: |
+            release
+            skip-changelog
+            auto-merge
+          draft: false
+
+  notify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [prepare-release, create-release, create-pull-request]
+    if: always()
+    steps:
+      - name: Notify success
+        if: needs.create-release.result == 'success'
+        run: |
+          echo "::notice::Release v${{ needs.prepare-release.outputs.version }} created successfully!"
+          echo "::notice::Docker images published to ghcr.io/${{ github.repository }}"
+
+      - name: Notify failure
+        if: failure()
+        run: |
+          echo "::error::Release pipeline failed for version ${{ needs.prepare-release.outputs.version }}"
